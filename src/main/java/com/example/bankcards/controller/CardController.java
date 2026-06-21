@@ -22,4 +22,16 @@ public class CardController {
     public void delete(@PathVariable String id) {
         cards.removeIf(c -> c.getId().equals(id));
     }
+
+    @PutMapping("/{id}")
+    public Card update(@PathVariable String id, @RequestBody Card updated) {
+        cards.stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .ifPresent(c -> {
+                    c.setNumber(updated.getNumber());
+                    c.setHolder(updated.getHolder());
+                });
+        return cards.stream().filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+    }
 }
