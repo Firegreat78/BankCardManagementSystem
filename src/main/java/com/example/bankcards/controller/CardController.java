@@ -17,4 +17,9 @@ public class CardController {
         cards.add(card);
         return card;
     }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable String id) {
+        cards.removeIf(c -> c.getId().equals(id));
+    }
 }
