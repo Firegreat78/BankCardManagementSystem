@@ -1,6 +1,8 @@
 package com.example.bankcards.entity;
 
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -8,6 +10,7 @@ public class Card {
     @Id String id;
     String number;
     String holder;
+    BigDecimal balance;
 
     public Card() { this.id = UUID.randomUUID().toString(); }
 
@@ -17,4 +20,6 @@ public class Card {
     public void setNumber(String number) { this.number = number; }
     public String getHolder() { return holder; }
     public void setHolder(String holder) { this.holder = holder; }
+    public BigDecimal getBalance() { return balance; }
+    public void setBalance(BigDecimal balance) { this.balance = balance; }
 }

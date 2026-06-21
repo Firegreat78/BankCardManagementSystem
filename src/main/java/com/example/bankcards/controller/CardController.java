@@ -31,6 +31,7 @@ public class CardController {
                 .ifPresent(c -> {
                     c.setNumber(updated.getNumber());
                     c.setHolder(updated.getHolder());
+                    c.setBalance(updated.getBalance());
                 });
         return cards.stream().filter(c -> c.getId().equals(id)).findFirst().orElse(null);
     }
