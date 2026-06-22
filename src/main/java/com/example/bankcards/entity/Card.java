@@ -1,16 +1,18 @@
 package com.example.bankcards.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 public class Card {
-    @Id String id;
-    String number;
-    String holder;
-    BigDecimal balance;
+    @Id @NotBlank String id;
+    @NotBlank String number;
+    @NotBlank String holder;
+    @DecimalMin(value = "0.0", inclusive = true, message = "Balance cannot be negative") BigDecimal balance;
 
     public Card() { this.id = UUID.randomUUID().toString(); }
 
