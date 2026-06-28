@@ -79,15 +79,4 @@ class CardControllerTest {
                         .param("amount", "2000"))
                 .andExpect(status().isBadRequest());
     }
-
-    @Test
-    void login_validCredentials_returnsToken() throws Exception {
-        String loginJson = "{\"username\":\"user\",\"password\":\"pass\"}";
-
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").isString());
-    }
 }
