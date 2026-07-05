@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class Card {
     @Id
-    @NotBlank
     String id;
 
     @NotBlank
