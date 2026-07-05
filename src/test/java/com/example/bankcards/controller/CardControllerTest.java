@@ -1,5 +1,6 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.util.Utility;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.math.BigDecimal;
 import java.util.Map;
 
+import static com.example.bankcards.util.Utility.cardNum;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,23 +36,6 @@ class CardControllerTest {
     private String userId1;
     private String userId2;
 
-    private String registerUser(String username, String password) throws Exception {
-        Map<String, Object> userMap = Map.of(
-                "username", username,
-                "password", password
-        );
-        String userJson = objectMapper.writeValueAsString(userMap);
-        MvcResult result = mockMvc.perform(post("/users/register")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(userJson))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        return objectMapper.readTree(json).get("id").asText();
-    }
-
     @BeforeEach
     void setUp() throws Exception {
         String correctAdminUsername = "user";
@@ -70,8 +55,8 @@ class CardControllerTest {
         adminToken = objectMapper.readTree(json).get("token").asText();
 
         // Create test users
-        userId1 = registerUser("alice", "alice123");
-        userId2 = registerUser("bob", "bob123");
+        userId1 = Utility.mockRegisterUser(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        userId2 = Utility.mockRegisterUser(adminToken, mockMvc, objectMapper, "bob", "bob123");
     }
 
     private String createCard(String number, String holderId, BigDecimal balance) throws Exception {
@@ -95,7 +80,7 @@ class CardControllerTest {
 
     @Test
     void createCard_shouldReturnCard() throws Exception {
-        String cardNum = "4111111111111111";
+        String cardNum = cardNum(1);
         long cardBalance = 1000;
 
         Map<String, Object> cardMap = Map.of(
@@ -119,7 +104,7 @@ class CardControllerTest {
     @Test
     void createCard_negativeBalance_shouldReturn400() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", "4222222222222222",
+                "number", cardNum(1),
                 "holderId", userId1,
                 "balance", -100
         );
@@ -135,7 +120,7 @@ class CardControllerTest {
     @Test
     void createCard_invalidNumberLength_shouldReturn400() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", "123",
+                "number", cardNum(1) + "1",
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -166,8 +151,8 @@ class CardControllerTest {
 
     @Test
     void transfer_insufficientBalance_shouldReturn400() throws Exception {
-        String fromId = createCard("4333333333333333", userId1, BigDecimal.valueOf(1000));
-        String toId = createCard("4444444444444444", userId2, BigDecimal.valueOf(500));
+        String fromId = createCard(cardNum(1), userId1, BigDecimal.valueOf(1000));
+        String toId = createCard(cardNum(2), userId2, BigDecimal.valueOf(500));
 
         mockMvc.perform(post("/cards/transfer")
                         .param("fromId", fromId)
@@ -179,8 +164,8 @@ class CardControllerTest {
 
     @Test
     void transfer_valid_shouldSucceed() throws Exception {
-        String fromId = createCard("4555555555555555", userId1, BigDecimal.valueOf(1000));
-        String toId = createCard("4666666666666666", userId2, BigDecimal.valueOf(500));
+        String fromId = createCard(cardNum(1), userId1, BigDecimal.valueOf(1000));
+        String toId = createCard(cardNum(2), userId2, BigDecimal.valueOf(500));
 
         mockMvc.perform(post("/cards/transfer")
                         .param("fromId", fromId)
@@ -198,7 +183,7 @@ class CardControllerTest {
 
     @Test
     void deleteCard_shouldReturn200() throws Exception {
-        String id = createCard("4777777777777777", userId1, BigDecimal.valueOf(1000));
+        String id = createCard(cardNum(1), userId1, BigDecimal.valueOf(1000));
 
         mockMvc.perform(delete("/cards/" + id)
                         .header("Authorization", "Bearer " + adminToken))
@@ -220,14 +205,15 @@ class CardControllerTest {
     @Test
     void deleteCard_afterDeletion_fetchShouldReturn404() throws Exception {
         // Create card
-        String id = createCard("4111111111111111", userId1, BigDecimal.valueOf(1000));
+        String cardNum = cardNum(1);
+        String id = createCard(cardNum, userId1, BigDecimal.valueOf(1000));
 
         // Fetch card - should exist
         mockMvc.perform(get("/cards/" + id)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
-                .andExpect(jsonPath("$.number").value("4111111111111111"));
+                .andExpect(jsonPath("$.number").value(cardNum));
 
         // Delete card
         mockMvc.perform(delete("/cards/" + id)
@@ -242,12 +228,14 @@ class CardControllerTest {
 
     @Test
     void updateCard_shouldReturnUpdated() throws Exception {
-        String id = createCard("4888888888888888", userId1, BigDecimal.valueOf(1000));
+        String cardNumber = cardNum(1);
+        String id = createCard(cardNumber, userId1, BigDecimal.valueOf(1000));
+        long balance = 2000;
 
         Map<String, Object> updateMap = Map.of(
-                "number", "4999999999999999",
+                "number", cardNumber,
                 "holderId", userId1,
-                "balance", 2000
+                "balance", balance
         );
         String updateJson = objectMapper.writeValueAsString(updateMap);
 
@@ -256,15 +244,15 @@ class CardControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.number").value("4999999999999999"))
+                .andExpect(jsonPath("$.number").value(cardNumber))
                 .andExpect(jsonPath("$.holderId").value(userId1))
-                .andExpect(jsonPath("$.balance").value(2000));
+                .andExpect(jsonPath("$.balance").value(balance));
     }
 
     @Test
     void updateCard_nonExistent_shouldReturn404() throws Exception {
         Map<String, Object> updateMap = Map.of(
-                "number", "4111111111111111",
+                "number", cardNum(1),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -279,8 +267,8 @@ class CardControllerTest {
 
     @Test
     void getCards_shouldReturnList() throws Exception {
-        createCard("4111111111111111", userId1, BigDecimal.valueOf(1000));
-        createCard("4222222222222222", userId2, BigDecimal.valueOf(500));
+        createCard(cardNum(1), userId1, BigDecimal.valueOf(1000));
+        createCard(cardNum(2), userId2, BigDecimal.valueOf(500));
 
         mockMvc.perform(get("/cards")
                         .header("Authorization", "Bearer " + adminToken))
@@ -300,26 +288,25 @@ class CardControllerTest {
     @Test
     void getCards_onlySizeWithoutPage_shouldReturnFirstPage() throws Exception {
         // Create 5 cards for userId1
-        for (int i = 1; i <= 5; i++) {
-            String num = String.format("%016d", i);
-            createCard(num, userId1, BigDecimal.valueOf(100 * i));
-        }
+        for (int i = 1; i <= 5; i++)
+            createCard(cardNum(i), userId1, BigDecimal.valueOf(100 * i));
+
 
         mockMvc.perform(get("/cards")
                         .param("size", "2")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].number").value("0000000000000001"));
+                .andExpect(jsonPath("$[0].number").value(cardNum(1)))
+                .andExpect(jsonPath("$[1].number").value(cardNum(2)));
     }
 
     @Test
     void getCards_withPagination_shouldReturnPaginated() throws Exception {
         // Create 5 cards for userId1
-        for (int i = 1; i <= 5; i++) {
-            String num = String.format("%016d", i);
-            createCard(num, userId1, BigDecimal.valueOf(100 * i));
-        }
+        for (int i = 1; i <= 5; i++)
+            createCard(cardNum(i), userId1, BigDecimal.valueOf(100 * i));
+
 
         mockMvc.perform(get("/cards")
                         .param("page", "0")
@@ -351,7 +338,7 @@ class CardControllerTest {
 
     @Test
     void createCard_duplicateNumber_shouldReturn409() throws Exception {
-        String cardNum = "4000000000000000";
+        String cardNum = cardNum(1);
 
         // First card
         Map<String, Object> cardMap = Map.of(
@@ -377,9 +364,12 @@ class CardControllerTest {
 
     @Test
     void createCard_sameHolderDifferentNumber_shouldSucceed() throws Exception {
+        String cardNum1 = cardNum(1);
+        String cardNum2 = cardNum(2);
+
         // First card with userId1
         Map<String, Object> cardMap1 = Map.of(
-                "number", "4111111111111111",
+                "number", cardNum1,
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -389,11 +379,13 @@ class CardControllerTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson1))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.number").value(cardNum1))
+                .andExpect(jsonPath("$.holderId").value(userId1));
 
         // Second card - same holderId, different number
         Map<String, Object> cardMap2 = Map.of(
-                "number", "4222222222222222",
+                "number", cardNum2,
                 "holderId", userId1,
                 "balance", 500
         );
@@ -404,7 +396,7 @@ class CardControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson2))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.number").value("4222222222222222"))
+                .andExpect(jsonPath("$.number").value(cardNum2))
                 .andExpect(jsonPath("$.holderId").value(userId1));
     }
 }
