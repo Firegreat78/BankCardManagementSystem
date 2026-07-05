@@ -20,7 +20,7 @@ public class Card {
     String number;
 
     @NotBlank
-    String holder;
+    String holderId;
 
     @DecimalMin(value = "0.0", message = "Balance cannot be negative")
     BigDecimal balance;
