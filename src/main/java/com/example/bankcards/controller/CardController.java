@@ -21,6 +21,7 @@ public class CardController {
     @PostMapping
     public Card create(@RequestBody @Valid Card card) {
         cards.add(card);
+        card.setId(UUID.randomUUID().toString());
         return card;
     }
 
