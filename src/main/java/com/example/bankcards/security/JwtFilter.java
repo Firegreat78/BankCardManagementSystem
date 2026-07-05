@@ -26,21 +26,24 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain chain)
             throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            try {
-                String username = jwtUtil.extractUsername(token);
-                boolean valid = jwtUtil.validateToken(token, username);
-                if (valid) {
-                    SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList())
-                    );
-                    chain.doFilter(request, response);
-                    return;
-                }
-            } catch (Exception e) {
-                System.out.println("JWT error: " + e.getMessage());
-            }
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            chain.doFilter(request, response);
+            return;
+        }
+        String token = authHeader.substring(7);
+        String username = jwtUtil.extractUsername(token);
+        boolean valid = jwtUtil.validateToken(token, username);
+        if (!valid) {
+            chain.doFilter(request, response);
+            return;
+        }
+        try {
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                    username, null, Collections.emptyList()));
+            chain.doFilter(request, response);
+            return;
+        } catch (Exception e) {
+            System.out.println("JWT error: " + e.getMessage());
         }
         chain.doFilter(request, response);
     }
