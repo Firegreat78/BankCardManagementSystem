@@ -15,13 +15,14 @@ class JwtTest {
 
     @Test
     void tokenGenerationAndValidation_shouldWork() {
-        String token = jwtUtil.generateToken("user1");
+        String initialUsername = "user1";
+        String token = jwtUtil.generateToken(initialUsername);
         assertThat(token).isNotBlank();
 
-        String username = jwtUtil.extractUsername(token);
-        assertThat(username).isEqualTo("user1");
+        String extractedUsername = jwtUtil.extractUsername(token);
+        assertThat(extractedUsername).isEqualTo(initialUsername);
 
-        boolean valid = jwtUtil.validateToken(token, "user1");
+        boolean valid = jwtUtil.validateToken(token, initialUsername);
         assertThat(valid).isTrue();
     }
 }
