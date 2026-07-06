@@ -39,22 +39,12 @@ public class Utility
     }
 
     public static String getUserToken(
-            String adminToken,
             MockMvc mockMvc,
             ObjectMapper objectMapper,
             String username,
             String password) throws Exception {
-        Map<String, Object> userMap = Map.of(
-                "username", username,
-                "password", password
-        );
-        String userJson = objectMapper.writeValueAsString(userMap);
-        mockMvc.perform(post("/users/register")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(userJson))
-                .andExpect(status().isCreated());
 
+        // Only login - user already exists from setUp
         Map<String, Object> loginMap = Map.of(
                 "username", username,
                 "password", password
