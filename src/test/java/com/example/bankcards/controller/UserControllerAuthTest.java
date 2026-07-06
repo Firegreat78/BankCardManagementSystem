@@ -31,6 +31,7 @@ class UserControllerAuthTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        // todo: fetch admin creds from cfg
         String correctAdminUsername = "user";
         String correctAdminPassword = "pass";
 

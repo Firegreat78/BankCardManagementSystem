@@ -1,6 +1,8 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.config.AdminConfig;
 import com.example.bankcards.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,6 +16,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    @Autowired
+    private AdminConfig adminConfig;
 
     private final JwtUtil jwtUtil;
 

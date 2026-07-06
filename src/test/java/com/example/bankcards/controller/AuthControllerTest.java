@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
@@ -14,7 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 @SuppressWarnings("unused")
 class AuthControllerTest {
     @Autowired
@@ -22,6 +24,8 @@ class AuthControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    private String adminToken;
 
     @Test
     void login_validCredentials_returnsToken() throws Exception {
@@ -54,5 +58,47 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_unregisteredUser_shouldReturn401() throws Exception {
+        Map<String, Object> loginMap = Map.of(
+                "username", "unknown",
+                "password", "unknown123"
+        );
+        String loginJson = objectMapper.writeValueAsString(loginMap);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_registeredUser_shouldReturn200() throws Exception {
+        // First register a user
+        Map<String, Object> registerMap = Map.of(
+                "username", "testuser",
+                "password", "testpass123"
+        );
+        String registerJson = objectMapper.writeValueAsString(registerMap);
+        mockMvc.perform(post("/users/register")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson))
+                .andExpect(status().isCreated());
+
+        // Then login
+        Map<String, Object> loginMap = Map.of(
+                "username", "testuser",
+                "password", "testpass123"
+        );
+        String loginJson = objectMapper.writeValueAsString(loginMap);
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString());
     }
 }

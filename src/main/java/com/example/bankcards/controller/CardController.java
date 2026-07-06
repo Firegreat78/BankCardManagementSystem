@@ -84,7 +84,7 @@ public class CardController {
         }
 
         existing.setNumber(updated.getNumber());
-        existing.setHolder(updated.getHolder());
+        existing.setHolderId(updated.getHolderId());
         existing.setBalance(updated.getBalance());
         return existing;
     }
@@ -122,5 +122,38 @@ public class CardController {
 
         from.setBalance(from.getBalance().subtract(amount));
         to.setBalance(to.getBalance().add(amount));
+    }
+
+    @PatchMapping("/{id}/block")
+    public Card block(@PathVariable String id) {
+        Card card = cards.stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+
+        card.setStatus("BLOCKED");
+        return card;
+    }
+
+    @PatchMapping("/{id}/activate")
+    public Card activate(@PathVariable String id) {
+        Card card = cards.stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+
+        card.setStatus("ACTIVE");
+        return card;
+    }
+
+    @PatchMapping("/{id}/block-request")
+    public Card requestBlock(@PathVariable String id) {
+        Card card = cards.stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+
+        card.setStatus("BLOCK_REQUESTED");
+        return card;
     }
 }

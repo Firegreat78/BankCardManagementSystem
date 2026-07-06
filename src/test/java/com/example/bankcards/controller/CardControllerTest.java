@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.math.BigDecimal;
 import java.util.Map;
 
-import static com.example.bankcards.util.Utility.cardNum;
+import static com.example.bankcards.util.Utility.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,8 +34,6 @@ class CardControllerTest {
     private String userId1;
     private String userId2;
 
-    private static final String ADMIN_USERNAME = "user";
-    private static final String ADMIN_PASSWORD = "pass";
     private static final String USER1_USERNAME = "alice";
     private static final String USER1_PASSWORD = "alice123";
     private static final String USER2_USERNAME = "bob";
@@ -49,7 +47,7 @@ class CardControllerTest {
     }
 
     private String loginAdmin() throws Exception {
-        Map<String, Object> loginMap = Map.of("username", CardControllerTest.ADMIN_USERNAME, "password", CardControllerTest.ADMIN_PASSWORD);
+        Map<String, Object> loginMap = Map.of("username", ADMIN_USERNAME, "password", ADMIN_PASSWORD);
         String loginJson = objectMapper.writeValueAsString(loginMap);
         MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

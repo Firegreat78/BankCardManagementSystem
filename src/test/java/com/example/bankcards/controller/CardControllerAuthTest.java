@@ -14,9 +14,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
-import static com.example.bankcards.util.Utility.cardNum;
-import static com.example.bankcards.util.Utility.getUserToken;
+import static com.example.bankcards.util.Utility.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -24,7 +24,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 @SuppressWarnings("unused")
 class CardControllerAuthTest {
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -33,16 +32,21 @@ class CardControllerAuthTest {
 
     private String adminToken;
 
-    private String userId1;
-    private String userId2;
+    private String userId1 = null;
+    private String userId2 = null;
+
+    private String userToken1 = null;
+    private String userToken2 = null;
+
+    private static final String USER1_USERNAME = "alice";
+    private static final String USER1_PASSWORD = "alice123";
+    private static final String USER2_USERNAME = "bob";
+    private static final String USER2_PASSWORD = "bob123";
 
     @BeforeEach
     void setUp() throws Exception {
-        Map<String, Object> loginMap = Map.of(
-                "username", "user",
-                "password", "pass"
-        );
-        String loginJson = objectMapper.writeValueAsString(loginMap);
+        Map<String, Object> adminLoginMap = Map.of("username", ADMIN_USERNAME, "password", ADMIN_PASSWORD);
+        String loginJson = objectMapper.writeValueAsString(adminLoginMap);
         MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
@@ -52,9 +56,23 @@ class CardControllerAuthTest {
         String json = result.getResponse().getContentAsString();
         adminToken = objectMapper.readTree(json).get("token").asText();
 
-        // Create test users
-        userId1 = Utility.mockRegisterUser(adminToken, mockMvc, objectMapper, "alice", "alice123");
-        userId2 = Utility.mockRegisterUser(adminToken, mockMvc, objectMapper, "bob", "bob123");
+        // Create test users if not created yet
+        if (userId1 == null)
+            userId1 = mockRegisterUser(adminToken, mockMvc, objectMapper, USER1_USERNAME, USER1_PASSWORD);
+        if (userId2 == null)
+            userId2 = mockRegisterUser(adminToken, mockMvc, objectMapper, USER2_USERNAME, USER2_PASSWORD);
+
+        System.out.println("userId1: " + userId1);
+        System.out.println("userId2: " + userId2);
+
+        // get user tokens
+        if (userToken1 == null)
+            userToken1 = getUserToken(mockMvc, objectMapper, USER1_USERNAME, USER1_PASSWORD);
+        if (userToken2 == null)
+            userToken2 = getUserToken(mockMvc, objectMapper, USER2_USERNAME, USER2_PASSWORD);
+
+        System.out.println("userToken1: " + userToken1);
+        System.out.println("userToken2: " + userToken2);
     }
 
     @Test
@@ -86,12 +104,13 @@ class CardControllerAuthTest {
                         .content(cardJson))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
+                .andDo(print())
                 .andExpect(jsonPath("$.number").value(cardNum));
     }
 
     @Test
     void createCard_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(2),
                 "holderId", userId1,
@@ -197,8 +216,8 @@ class CardControllerAuthTest {
 
     @Test
     void deleteCard_notOwnedByUser_shouldReturn403() throws Exception {
-        String userToken1 = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
-        String userToken2 = getUserToken(adminToken, mockMvc, objectMapper, "bob", "bob123");
+        String userToken1 = getUserToken(mockMvc, objectMapper, "alice", "alice123");
+        String userToken2 = getUserToken(mockMvc, objectMapper, "bob", "bob123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(7),
@@ -238,7 +257,7 @@ class CardControllerAuthTest {
 
     @Test
     void getAllCards_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
         mockMvc.perform(get("/cards/all")
                         .header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isForbidden());
@@ -246,7 +265,7 @@ class CardControllerAuthTest {
 
     @Test
     void viewOwnCards_withUserToken_shouldReturnOnlyOwned() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(8),
@@ -270,7 +289,7 @@ class CardControllerAuthTest {
 
     @Test
     void viewOwnCards_withPagination_shouldReturnPaginated() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         for (int i = 0; i < 3; i++) {
             Map<String, Object> cardMap = Map.of(
@@ -304,7 +323,7 @@ class CardControllerAuthTest {
 
     @Test
     void requestBlockCard_withUserToken_shouldReturn200() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(12),
@@ -331,7 +350,7 @@ class CardControllerAuthTest {
 
     @Test
     void transferBetweenOwnCards_withUserToken_shouldReturn200() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap1 = Map.of(
                 "number", cardNum(13),
@@ -375,7 +394,7 @@ class CardControllerAuthTest {
 
     @Test
     void transferToNotOwnCard_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(15),
@@ -404,7 +423,7 @@ class CardControllerAuthTest {
 
     @Test
     void transfer_insufficientBalance_shouldReturn400() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(16),
@@ -433,7 +452,7 @@ class CardControllerAuthTest {
 
     @Test
     void viewBalance_withUserToken_shouldReturnBalance() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(17),
@@ -460,7 +479,7 @@ class CardControllerAuthTest {
 
     @Test
     void viewBalance_otherUserCard_shouldReturn403() throws Exception {
-        String userToken = getUserToken(adminToken, mockMvc, objectMapper, "alice", "alice123");
+        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
 
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum(18),

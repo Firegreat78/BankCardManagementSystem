@@ -22,6 +22,9 @@ public class Card {
     @NotBlank
     String holderId;
 
+    @NotBlank
+    private String status = "ACTIVE"; // default
+
     @DecimalMin(value = "0.0", message = "Balance cannot be negative")
     BigDecimal balance;
 }
