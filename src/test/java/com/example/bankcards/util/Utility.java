@@ -12,6 +12,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class Utility
 {
+    public static final String ADMIN_USERNAME = "user";
+    public static final String ADMIN_PASSWORD = "pass";
+
     public static String cardNum(int n) {
         return String.format("%016d", n);
     }
