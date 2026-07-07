@@ -1,5 +1,7 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.config.AdminConfig;
+import com.example.bankcards.util.Utility;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -20,23 +23,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SuppressWarnings("unused")
 class AuthControllerTest {
     @Autowired
+    AdminConfig adminConfig;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    private String adminToken;
+    @Autowired
+    Utility utility;
 
     @Test
     void login_validCredentials_returnsToken() throws Exception {
-        String adminUsername = "user";
-        String adminPassword = "pass";
         Map<String, Object> adminMap = Map.of(
-                "username", adminUsername,
-                "password", adminPassword
+                "username", adminConfig.getUsername(), "password", adminConfig.getPassword()
         );
         String loginJson = objectMapper.writeValueAsString(adminMap);
-
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
@@ -46,14 +49,10 @@ class AuthControllerTest {
 
     @Test
     void login_invalidCredentials_returns401() throws Exception {
-        String adminUsername = "user";
-        String wrongAdminPassword = "wrong";
         Map<String, Object> adminMap = Map.of(
-                "username", adminUsername,
-                "password", wrongAdminPassword
+                "username", adminConfig.getUsername(), "password", adminConfig.getPassword() + "0"
         );
         String loginJson = objectMapper.writeValueAsString(adminMap);
-
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
@@ -67,7 +66,6 @@ class AuthControllerTest {
                 "password", "unknown123"
         );
         String loginJson = objectMapper.writeValueAsString(loginMap);
-
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
@@ -76,25 +74,21 @@ class AuthControllerTest {
 
     @Test
     void login_registeredUser_shouldReturn200() throws Exception {
-        // First register a user
-        Map<String, Object> registerMap = Map.of(
-                "username", "testuser",
-                "password", "testpass123"
-        );
+        String username = "testuser";
+        String password = "testpass123";
+        String adminToken = utility.loginAdmin(mockMvc);
+        System.out.println("adminToken: " + adminToken);
+        Map<String, Object> registerMap = Map.of("username", username, "password", password);
         String registerJson = objectMapper.writeValueAsString(registerMap);
         mockMvc.perform(post("/users/register")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerJson))
+                .andDo(print())
                 .andExpect(status().isCreated());
+        Map<String, Object> loginMap = Map.of("username", username, "password", password);
 
-        // Then login
-        Map<String, Object> loginMap = Map.of(
-                "username", "testuser",
-                "password", "testpass123"
-        );
         String loginJson = objectMapper.writeValueAsString(loginMap);
-
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))

@@ -2,6 +2,7 @@ package com.example.bankcards.controller;
 
 import com.example.bankcards.entity.User;
 import jakarta.validation.Valid;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Getter
 @RestController
 @RequestMapping("/users")
 public class UserController {
