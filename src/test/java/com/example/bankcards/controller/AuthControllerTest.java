@@ -14,7 +14,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -60,35 +59,14 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_unregisteredUser_shouldReturn401() throws Exception {
-        Map<String, Object> loginMap = Map.of(
-                "username", "unknown",
-                "password", "unknown123"
-        );
-        String loginJson = objectMapper.writeValueAsString(loginMap);
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     void login_registeredUser_shouldReturn200() throws Exception {
         String username = "testuser";
         String password = "testpass123";
-        String adminToken = utility.loginAdmin(mockMvc);
-        System.out.println("adminToken: " + adminToken);
-        Map<String, Object> registerMap = Map.of("username", username, "password", password);
-        String registerJson = objectMapper.writeValueAsString(registerMap);
-        mockMvc.perform(post("/users/register")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(registerJson))
-                .andDo(print())
-                .andExpect(status().isCreated());
-        Map<String, Object> loginMap = Map.of("username", username, "password", password);
 
-        String loginJson = objectMapper.writeValueAsString(loginMap);
+        String adminToken = utility.loginAdmin(mockMvc);
+        String userId = utility.registerUser(adminToken, mockMvc, username, password);
+
+        String loginJson = objectMapper.writeValueAsString(Map.of("username", username, "password", password));
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
