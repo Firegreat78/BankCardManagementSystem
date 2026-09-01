@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
@@ -35,42 +36,46 @@ class AuthControllerTest {
 
     @Test
     void login_validCredentials_returnsToken() throws Exception {
-        Map<String, Object> adminMap = Map.of(
-                "username", adminConfig.getUsername(), "password", adminConfig.getPassword()
-        );
-        String loginJson = objectMapper.writeValueAsString(adminMap);
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
+        utility.loginUserAction(mockMvc, adminConfig.getUsername(), adminConfig.getPassword())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString());
     }
 
     @Test
     void login_invalidCredentials_returns401() throws Exception {
-        Map<String, Object> adminMap = Map.of(
-                "username", adminConfig.getUsername(), "password", adminConfig.getPassword() + "0"
-        );
-        String loginJson = objectMapper.writeValueAsString(adminMap);
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
+        String invalidUsername = adminConfig.getUsername() + "0";
+        utility.loginUserAction(mockMvc, invalidUsername, "pass")
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void login_registeredUser_shouldReturn200() throws Exception {
-        String username = "testuser";
-        String password = "testpass123";
-
+    void registerUser_withAdminToken_shouldReturnCreatedUser() throws Exception {
         String adminToken = utility.loginAdmin(mockMvc);
-        String userId = utility.registerUser(adminToken, mockMvc, username, password);
 
-        String loginJson = objectMapper.writeValueAsString(Map.of("username", username, "password", password));
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
+        utility.registerUserAction(mockMvc, adminToken, "alice", "pass")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.username").value("alice"));
+    }
+
+    @Test
+    void registerUser_withUserToken_isForbidden() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+
+        utility.registerUser(mockMvc, adminToken, "user1", "pass1");
+        String userToken = utility.loginUser(mockMvc, "user1", "pass1");
+
+        utility.registerUserAction(mockMvc, userToken, "user2", "pass2")
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void login_registeredUser_shouldReturn200() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+        String id = utility.registerUser(mockMvc, adminToken, "user", "pass");
+        utility.loginUserAction(mockMvc, "user", "pass")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString());
+
     }
 }

@@ -1,5 +1,6 @@
 package com.example.bankcards.security;
 
+import com.example.bankcards.entity.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +33,8 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         String token = authHeader.substring(7);
         String username = jwtUtil.extractUsername(token);
-        boolean valid = jwtUtil.validateToken(token, username);
+        Role role = jwtUtil.extractRole(token);
+        boolean valid = jwtUtil.validateToken(token, username, role);
         if (!valid) {
             chain.doFilter(request, response);
             return;

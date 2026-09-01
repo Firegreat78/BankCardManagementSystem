@@ -1,5 +1,6 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.config.AdminConfig;
 import com.example.bankcards.util.Utility;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,18 +13,32 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
-import static com.example.bankcards.util.Utility.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/*
+* UserCardControllerTest - тесты для действий пользователя.
+Возможности юзера:
+Просматривает свои карты (поиск + пагинация)
+Запрашивает блокировку карты
+Делает переводы между своими картами
+Смотрит баланс
+* */
 @SpringBootTest
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 @SuppressWarnings("unused")
-class CardControllerAuthTest {
+class UserCardControllerTest {
+
+    @Autowired
+    private AdminConfig adminConfig;
+
+    @Autowired
+    private Utility utility;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -45,40 +60,19 @@ class CardControllerAuthTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        Map<String, Object> adminLoginMap = Map.of("username", ADMIN_USERNAME, "password", ADMIN_PASSWORD);
-        String loginJson = objectMapper.writeValueAsString(adminLoginMap);
-        MvcResult result = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
-                .andExpect(status().isOk())
-                .andReturn();
+        adminToken = utility.loginAdmin(mockMvc);
 
-        String json = result.getResponse().getContentAsString();
-        adminToken = objectMapper.readTree(json).get("token").asText();
+        userId1 = utility.registerUser(mockMvc, adminToken, USER1_USERNAME, USER1_PASSWORD);
+        userId2 = utility.registerUser(mockMvc, adminToken, USER2_USERNAME, USER2_PASSWORD);
 
-        // Create test users if not created yet
-        if (userId1 == null)
-            userId1 = mockRegisterUser(adminToken, mockMvc, objectMapper, USER1_USERNAME, USER1_PASSWORD);
-        if (userId2 == null)
-            userId2 = mockRegisterUser(adminToken, mockMvc, objectMapper, USER2_USERNAME, USER2_PASSWORD);
-
-        System.out.println("userId1: " + userId1);
-        System.out.println("userId2: " + userId2);
-
-        // get user tokens
-        if (userToken1 == null)
-            userToken1 = getUserToken(mockMvc, objectMapper, USER1_USERNAME, USER1_PASSWORD);
-        if (userToken2 == null)
-            userToken2 = getUserToken(mockMvc, objectMapper, USER2_USERNAME, USER2_PASSWORD);
-
-        System.out.println("userToken1: " + userToken1);
-        System.out.println("userToken2: " + userToken2);
+        userToken1 = utility.loginUser(mockMvc, USER1_USERNAME, USER1_PASSWORD);
+        userToken2 = utility.loginUser(mockMvc, USER2_USERNAME, USER2_PASSWORD);
     }
 
     @Test
     void createCard_withoutToken_shouldReturn401() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(1),
+                "number", utility.generateCardNum(1),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -91,7 +85,7 @@ class CardControllerAuthTest {
 
     @Test
     void createCard_withAdminToken_shouldReturn201() throws Exception {
-        String cardNum = cardNum(1);
+        String cardNum = utility.generateCardNum(1);
         Map<String, Object> cardMap = Map.of(
                 "number", cardNum,
                 "holderId", userId1,
@@ -104,21 +98,19 @@ class CardControllerAuthTest {
                         .content(cardJson))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
-                .andDo(print())
                 .andExpect(jsonPath("$.number").value(cardNum));
     }
 
     @Test
     void createCard_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(2),
+                "number", utility.generateCardNum(2),
                 "holderId", userId1,
                 "balance", 500
         );
         String cardJson = objectMapper.writeValueAsString(cardMap);
         mockMvc.perform(post("/cards")
-                        .header("Authorization", "Bearer " + userToken)
+                        .header("Authorization", "Bearer " + userToken1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cardJson))
                 .andExpect(status().isForbidden());
@@ -127,7 +119,7 @@ class CardControllerAuthTest {
     @Test
     void createCard_negativeBalance_shouldReturn400() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(3),
+                "number", utility.generateCardNum(3),
                 "holderId", userId1,
                 "balance", -100
         );
@@ -142,7 +134,7 @@ class CardControllerAuthTest {
     @Test
     void blockCard_withAdminToken_shouldReturn200() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(4),
+                "number", utility.generateCardNum(4),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -166,7 +158,7 @@ class CardControllerAuthTest {
     @Test
     void activateCard_withAdminToken_shouldReturn200() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(5),
+                "number", utility.generateCardNum(5),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -194,7 +186,7 @@ class CardControllerAuthTest {
     @Test
     void deleteCard_withAdminToken_shouldReturn200() throws Exception {
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(6),
+                "number", utility.generateCardNum(6),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -216,11 +208,8 @@ class CardControllerAuthTest {
 
     @Test
     void deleteCard_notOwnedByUser_shouldReturn403() throws Exception {
-        String userToken1 = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-        String userToken2 = getUserToken(mockMvc, objectMapper, "bob", "bob123");
-
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(7),
+                "number", utility.generateCardNum(7),
                 "holderId", userId1,
                 "balance", 1000
         );
@@ -257,21 +246,17 @@ class CardControllerAuthTest {
 
     @Test
     void getAllCards_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
         mockMvc.perform(get("/cards/all")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void viewOwnCards_withUserToken_shouldReturnOnlyOwned() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(8),
+                "number", utility.generateCardNum(8),
                 "holderId", userId1,
-                "balance", 1000,
-                "ownerId", "alice"
+                "balance", 1000
         );
         String cardJson = objectMapper.writeValueAsString(cardMap);
         mockMvc.perform(post("/cards")
@@ -281,22 +266,19 @@ class CardControllerAuthTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/cards")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].ownerId").value("alice"));
+                .andExpect(jsonPath("$[0].ownerId").value(USER1_USERNAME));
     }
 
     @Test
     void viewOwnCards_withPagination_shouldReturnPaginated() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
         for (int i = 0; i < 3; i++) {
             Map<String, Object> cardMap = Map.of(
-                    "number", cardNum(9 + i),
+                    "number", utility.generateCardNum(9 + i),
                     "holderId", userId1,
-                    "balance", 1000,
-                    "ownerId", "alice"
+                    "balance", 1000
             );
             String cardJson = objectMapper.writeValueAsString(cardMap);
             mockMvc.perform(post("/cards")
@@ -309,27 +291,24 @@ class CardControllerAuthTest {
         mockMvc.perform(get("/cards")
                         .param("page", "0")
                         .param("size", "2")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
 
         mockMvc.perform(get("/cards")
                         .param("page", "1")
                         .param("size", "2")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
     void requestBlockCard_withUserToken_shouldReturn200() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
         Map<String, Object> cardMap = Map.of(
-                "number", cardNum(12),
+                "number", utility.generateCardNum(12),
                 "holderId", userId1,
-                "balance", 1000,
-                "ownerId", "alice"
+                "balance", 1000
         );
         String cardJson = objectMapper.writeValueAsString(cardMap);
         MvcResult result = mockMvc.perform(post("/cards")
@@ -343,26 +322,22 @@ class CardControllerAuthTest {
         String id = objectMapper.readTree(json).get("id").asText();
 
         mockMvc.perform(patch("/cards/" + id + "/block-request")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("BLOCK_REQUESTED"));
     }
 
     @Test
     void transferBetweenOwnCards_withUserToken_shouldReturn200() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
         Map<String, Object> cardMap1 = Map.of(
-                "number", cardNum(13),
+                "number", utility.generateCardNum(13),
                 "holderId", userId1,
-                "balance", 1000,
-                "ownerId", "alice"
+                "balance", 1000
         );
         Map<String, Object> cardMap2 = Map.of(
-                "number", cardNum(14),
+                "number", utility.generateCardNum(14),
                 "holderId", userId1,
-                "balance", 100,
-                "ownerId", "alice"
+                "balance", 100
         );
         String cardJson1 = objectMapper.writeValueAsString(cardMap1);
         String cardJson2 = objectMapper.writeValueAsString(cardMap2);
@@ -388,118 +363,95 @@ class CardControllerAuthTest {
                         .param("fromId", fromId)
                         .param("toId", toId)
                         .param("amount", "200")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk());
     }
 
     @Test
     void transferToNotOwnCard_withUserToken_shouldReturn403() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
-        Map<String, Object> cardMap = Map.of(
-                "number", cardNum(15),
-                "holderId", userId2,
-                "balance", 1000,
-                "ownerId", "bob"
+        Map<String, Object> cardMapAlice = Map.of(
+                "number", utility.generateCardNum(15),
+                "holderId", userId1,
+                "balance", 1000
         );
-        String cardJson = objectMapper.writeValueAsString(cardMap);
-        MvcResult result = mockMvc.perform(post("/cards")
+        Map<String, Object> cardMapBob = Map.of(
+                "number", utility.generateCardNum(16),
+                "holderId", userId2,
+                "balance", 1000
+        );
+        String cardJsonAlice = objectMapper.writeValueAsString(cardMapAlice);
+        String cardJsonBob = objectMapper.writeValueAsString(cardMapBob);
+        MvcResult resultAlice = mockMvc.perform(post("/cards")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(cardJson))
+                        .content(cardJsonAlice))
+                .andExpect(status().isOk())
+                .andReturn();
+        MvcResult resultBob = mockMvc.perform(post("/cards")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJsonBob))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String json = result.getResponse().getContentAsString();
-        String id = objectMapper.readTree(json).get("id").asText();
+        String jsonAlice = resultBob.getResponse().getContentAsString();
+        String jsonBob = resultBob.getResponse().getContentAsString();
+
+        String idAliceCard = objectMapper.readTree(jsonAlice).get("id").asText();
+        String idBobCard = objectMapper.readTree(jsonBob).get("id").asText();
 
         mockMvc.perform(post("/cards/transfer")
-                        .param("fromId", id)
-                        .param("toId", id)
+                        .param("fromId", idAliceCard)
+                        .param("toId", idBobCard)
                         .param("amount", "100")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/cards/transfer")
+                        .param("fromId", idAliceCard)
+                        .param("toId", idBobCard)
+                        .param("amount", "100")
+                        .header("Authorization", "Bearer " + userToken2))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/cards/transfer")
+                        .param("fromId", idBobCard)
+                        .param("toId", idAliceCard)
+                        .param("amount", "100")
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/cards/transfer")
+                        .param("fromId", idBobCard)
+                        .param("toId", idAliceCard)
+                        .param("amount", "100")
+                        .header("Authorization", "Bearer " + userToken2))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void transfer_insufficientBalance_shouldReturn400() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
+        String fromId = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.ONE);
+        String toId = utility.createCard(mockMvc, adminToken, utility.generateCardNum(2), userId1, BigDecimal.ZERO);
 
-        Map<String, Object> cardMap = Map.of(
-                "number", cardNum(16),
-                "holderId", userId1,
-                "balance", 50,
-                "ownerId", "alice"
-        );
-        String cardJson = objectMapper.writeValueAsString(cardMap);
-        MvcResult result = mockMvc.perform(post("/cards")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cardJson))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        String id = objectMapper.readTree(json).get("id").asText();
-
-        mockMvc.perform(post("/cards/transfer")
-                        .param("fromId", id)
-                        .param("toId", id)
-                        .param("amount", "100")
-                        .header("Authorization", "Bearer " + userToken))
+        utility.createTransferAction(mockMvc, userToken1, fromId, toId, BigDecimal.TEN)
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void viewBalance_withUserToken_shouldReturnBalance() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
-        Map<String, Object> cardMap = Map.of(
-                "number", cardNum(17),
-                "holderId", userId1,
-                "balance", 1500,
-                "ownerId", "alice"
-        );
-        String cardJson = objectMapper.writeValueAsString(cardMap);
-        MvcResult result = mockMvc.perform(post("/cards")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cardJson))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        String id = objectMapper.readTree(json).get("id").asText();
+        int balance = 1500;
+        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(17), userId1, BigDecimal.valueOf(balance));
 
         mockMvc.perform(get("/cards/" + id + "/balance")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(1500));
+                .andExpect(jsonPath("$.balance").value(balance));
     }
 
     @Test
     void viewBalance_otherUserCard_shouldReturn403() throws Exception {
-        String userToken = getUserToken(mockMvc, objectMapper, "alice", "alice123");
-
-        Map<String, Object> cardMap = Map.of(
-                "number", cardNum(18),
-                "holderId", userId2,
-                "balance", 2000,
-                "ownerId", "bob"
-        );
-        String cardJson = objectMapper.writeValueAsString(cardMap);
-        MvcResult result = mockMvc.perform(post("/cards")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cardJson))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        String id = objectMapper.readTree(json).get("id").asText();
-
+        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId2, BigDecimal.valueOf(2000));
         mockMvc.perform(get("/cards/" + id + "/balance")
-                        .header("Authorization", "Bearer " + userToken))
+                        .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isForbidden());
     }
 }

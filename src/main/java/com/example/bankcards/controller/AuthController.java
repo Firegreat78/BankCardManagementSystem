@@ -3,6 +3,7 @@ package com.example.bankcards.controller;
 import com.example.bankcards.config.AdminConfig;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.security.JwtUtil;
+import com.example.bankcards.entity.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,13 +36,15 @@ public class AuthController {
         String username = request.get("username");
         String password = request.get("password");
 
-        if (adminConfig.getUsername().equals(username) && adminConfig.getPassword().equals(password)) {
-            return Map.of("token", jwtUtil.generateToken(username));
+        if (adminConfig.getUsername().equals(username) &&
+                adminConfig.getPassword().equals(password)
+        ) {
+            return Map.of("token", jwtUtil.generateToken(username, Role.ADMIN));
         }
 
         for (User user : userController.getUsers()) {
             if (user.getUsername().equals(username) && user.getPassword().equals(password)) {
-                return Map.of("token", jwtUtil.generateToken(username));
+                return Map.of("token", jwtUtil.generateToken(username, Role.USER));
             }
         }
 

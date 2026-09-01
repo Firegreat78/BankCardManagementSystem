@@ -73,8 +73,7 @@ public class CardController {
                 .filter(c -> c.getId().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
-
-        // Check duplicate number if changed
+        
         if (!existing.getNumber().equals(updated.getNumber())) {
             boolean exists = cards.stream()
                     .anyMatch(c -> c.getNumber().equals(updated.getNumber()) && !c.getId().equals(id));
@@ -130,7 +129,6 @@ public class CardController {
                 .filter(c -> c.getId().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
-
         card.setStatus("BLOCKED");
         return card;
     }
@@ -141,7 +139,6 @@ public class CardController {
                 .filter(c -> c.getId().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
-
         card.setStatus("ACTIVE");
         return card;
     }

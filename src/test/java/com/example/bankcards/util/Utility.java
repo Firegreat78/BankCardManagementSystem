@@ -3,41 +3,53 @@ package com.example.bankcards.util;
 import com.example.bankcards.config.AdminConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Component
 @RequiredArgsConstructor
 public class Utility {
+    @Autowired
+    private AdminConfig adminConfig;
 
-    private final AdminConfig adminConfig;
-    private final ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-    public String cardNum(int n) {
+    public String generateCardNum(int n) throws ArithmeticException {
+        if (n < 0) throw new ArithmeticException("card number should not be negative");
         return String.format("%016d", n);
     }
 
-    public String mockRegisterUser(
-            String adminToken,
+    public ResultActions registerUserAction(
             MockMvc mockMvc,
+            String token,
             String username,
             String password) throws Exception {
-        Map<String, Object> userMap = Map.of(
-                "username", username,
-                "password", password
-        );
-        String userJson = objectMapper.writeValueAsString(userMap);
-        MvcResult result = mockMvc.perform(post("/users/register")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(userJson))
+        return mockMvc.perform(post("/users/register")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "username", username,
+                        "password", password
+                ))));
+    }
+
+    public String registerUser(
+            MockMvc mockMvc,
+            String adminToken,
+            String username,
+            String password) throws Exception {
+        MvcResult result = registerUserAction(mockMvc, adminToken, username, password)
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -45,38 +57,92 @@ public class Utility {
         return objectMapper.readTree(json).get("id").asText();
     }
 
-    public String loginAdmin(MockMvc mockMvc) throws Exception {
-        Map<String, Object> loginMap = Map.of(
-                "username", adminConfig.getUsername(),
-                "password", adminConfig.getPassword()
-        );
-        String loginJson = objectMapper.writeValueAsString(loginMap);
-        MvcResult result = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
+    public ResultActions loginUserAction(
+            MockMvc mockMvc,
+            String username,
+            String password) throws Exception {
+        return mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "username", username,
+                        "password", password
+                ))));
+    }
+
+    public String loginUser(
+            MockMvc mockMvc,
+            String username,
+            String password) throws Exception {
+        MvcResult result = loginUserAction(mockMvc, username, password)
                 .andExpect(status().isOk())
                 .andReturn();
         String json = result.getResponse().getContentAsString();
         return objectMapper.readTree(json).get("token").asText();
     }
 
-    public String getUserToken(
-            MockMvc mockMvc,
-            String username,
-            String password) throws Exception {
+    public String loginAdmin(MockMvc mockMvc) throws Exception {
+        return loginUser(mockMvc, adminConfig.getUsername(), adminConfig.getPassword());
+    }
 
-        Map<String, Object> loginMap = Map.of(
-                "username", username,
-                "password", password
-        );
-        String loginJson = objectMapper.writeValueAsString(loginMap);
-        MvcResult result = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson))
+    public ResultActions getCardAction(MockMvc mockMvc, String token) throws Exception {
+        return mockMvc.perform(get("/cards").header("Authorization", "Bearer " + token));
+    }
+
+    public ResultActions getCardAction(MockMvc mockMvc, String token, String cardId) throws Exception {
+        return mockMvc.perform(get("/cards/" + cardId)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    public ResultActions getCardAction(MockMvc mockMvc, String token, String cardId, int page) throws Exception {
+        return mockMvc.perform(get("/cards/" + cardId)
+                .param("page", String.valueOf(page))
+                .header("Authorization", "Bearer " + token));
+    }
+
+    public ResultActions createCardAction(
+            MockMvc mockMvc,
+            String token,
+            String number,
+            String holderId,
+            BigDecimal balance) throws Exception {
+        return mockMvc.perform(post("/cards")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "number", number,
+                        "holderId", holderId,
+                        "balance", balance
+                ))));
+    }
+
+    public String createCard(
+            MockMvc mockMvc,
+            String adminToken,
+            String number,
+            String holderId,
+            BigDecimal balance) throws Exception {
+        MvcResult result = createCardAction(mockMvc, adminToken, number, holderId, balance)
                 .andExpect(status().isOk())
                 .andReturn();
-
         String json = result.getResponse().getContentAsString();
-        return objectMapper.readTree(json).get("token").asText();
+        return objectMapper.readTree(json).get("id").asText();
+    }
+
+    public ResultActions deleteCardAction(MockMvc mockMvc, String token, String cardId) throws Exception {
+        return mockMvc.perform(delete("/cards/" + cardId)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    public ResultActions createTransferAction(
+            MockMvc mockMvc,
+            String token,
+            String fromCardId,
+            String toCardId,
+            BigDecimal balance) throws Exception {
+        return mockMvc.perform(post("/cards/transfer")
+                .param("fromId", fromCardId)
+                .param("toId", toCardId)
+                .param("amount", balance.toString())
+                .header("Authorization", "Bearer " + token));
     }
 }
