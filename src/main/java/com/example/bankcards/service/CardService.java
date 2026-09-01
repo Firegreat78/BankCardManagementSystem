@@ -1,6 +1,7 @@
 package com.example.bankcards.service;
 
 import com.example.bankcards.entity.Card;
+import com.example.bankcards.repository.CardRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,10 +15,14 @@ import java.util.UUID;
 @Service
 public class CardService {
 
-    private final List<Card> cards = new ArrayList<>();
+    private final CardRepository cardRepository;
+
+    public CardService(CardRepository cardRepository) {
+        this.cardRepository = cardRepository;
+    }
 
     public Card create(Card card) {
-        boolean exists = cards.stream()
+        boolean exists = cardRepository.findAll().stream()
                 .anyMatch(c -> c.getNumber().equals(card.getNumber()));
 
         if (exists) {
@@ -28,11 +33,13 @@ public class CardService {
         }
 
         card.setId(UUID.randomUUID().toString());
-        cards.add(card);
+        cardRepository.add(card);
         return card;
     }
 
     public List<Card> list(Integer page, Integer size) {
+        List<Card> cards = cardRepository.findAll();
+
         if (page == null && size == null) {
             return cards;
         }
@@ -58,9 +65,7 @@ public class CardService {
     }
 
     public Card getById(String id) {
-        return cards.stream()
-                .filter(c -> c.getId().equals(id))
-                .findFirst()
+        return cardRepository.findById(id)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -72,7 +77,7 @@ public class CardService {
         Card existing = getById(id);
 
         if (!existing.getNumber().equals(updated.getNumber())) {
-            boolean exists = cards.stream()
+            boolean exists = cardRepository.findAll().stream()
                     .anyMatch(c ->
                             c.getNumber().equals(updated.getNumber())
                                     && !c.getId().equals(id));
@@ -93,9 +98,7 @@ public class CardService {
     }
 
     public void delete(String id) {
-        boolean removed = cards.removeIf(c -> c.getId().equals(id));
-
-        if (!removed) {
+        if (!cardRepository.deleteById(id)) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Card not found"
