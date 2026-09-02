@@ -1,11 +1,14 @@
 package com.example.bankcards.service;
 
 import com.example.bankcards.entity.Card;
+import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.CardJpaRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.bankcards.repository.UserJpaRepository;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -16,9 +19,14 @@ import java.util.UUID;
 public class CardService {
 
     private final CardJpaRepository cardJpaRepository;
+    private final UserJpaRepository userJpaRepository;
 
-    public CardService(CardJpaRepository cardJpaRepository) {
+    public CardService(
+            CardJpaRepository cardJpaRepository,
+            UserJpaRepository userJpaRepository
+    ) {
         this.cardJpaRepository = cardJpaRepository;
+        this.userJpaRepository = userJpaRepository;
     }
 
     public Card create(Card card) {
@@ -36,8 +44,30 @@ public class CardService {
         return card;
     }
 
-    public List<Card> list(Integer page, Integer size) {
-        List<Card> cards = cardJpaRepository.findAll();
+    public List<Card> list(
+            Integer page,
+            Integer size,
+            Authentication authentication
+    ) {
+        List<Card> cards;
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        authority.getAuthority().equals("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            cards = cardJpaRepository.findAll();
+        } else {
+            String username = authentication.getName();
+
+            User user = userJpaRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "Authenticated user not found"
+                    ));
+
+            cards = cardJpaRepository.findByHolderId(user.getId());
+        }
 
         if (page == null && size == null) {
             return cards;

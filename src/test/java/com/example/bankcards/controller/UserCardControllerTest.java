@@ -239,11 +239,54 @@ class UserCardControllerTest {
     }
 
     @Test
-    void getAllCards_withAdminToken_shouldReturnList() throws Exception {
-        mockMvc.perform(get("/cards/all")
+    void getCards_withAdminToken_shouldReturnAllCards() throws Exception {
+        utility.createCard(
+                mockMvc,
+                adminToken,
+                utility.generateCardNum(1),
+                userId1,
+                BigDecimal.valueOf(100)
+        );
+
+        utility.createCard(
+                mockMvc,
+                adminToken,
+                utility.generateCardNum(2),
+                userId2,
+                BigDecimal.valueOf(200)
+        );
+
+        mockMvc.perform(get("/cards")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void getCards_withUserToken_shouldReturnOnlyOwnCards() throws Exception {
+        String ownCardId = utility.createCard(
+                mockMvc,
+                adminToken,
+                utility.generateCardNum(3),
+                userId1,
+                BigDecimal.valueOf(100)
+        );
+
+        utility.createCard(
+                mockMvc,
+                adminToken,
+                utility.generateCardNum(4),
+                userId2,
+                BigDecimal.valueOf(200)
+        );
+
+        mockMvc.perform(get("/cards")
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(ownCardId));
     }
 
     @Test

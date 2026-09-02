@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+
 @RestController
 @RequestMapping("/cards")
 @SuppressWarnings("unused")
@@ -27,8 +29,9 @@ public class CardController {
     @GetMapping
     public List<Card> list(
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size) {
-        return cardService.list(page, size);
+            @RequestParam(required = false) Integer size,
+            Authentication authentication) {
+        return cardService.list(page, size, authentication);
     }
 
     @GetMapping("/{id}")
