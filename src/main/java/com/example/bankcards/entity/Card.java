@@ -1,6 +1,7 @@
 package com.example.bankcards.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,20 +12,28 @@ import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
+@Entity
 public class Card {
+
     @Id
-    String id;
+    private String id;
 
     @NotBlank
-    @Pattern(regexp = "^[0-9]{16}$", message = "Card number must be exactly 16 digits")
-    String number;
+    @Pattern(
+            regexp = "^[0-9]{16}$",
+            message = "Card number must be exactly 16 digits"
+    )
+    private String number;
 
     @NotBlank
-    String holderId;
+    private String holderId;
 
     @NotBlank
-    private String status = "ACTIVE"; // default
+    private String status = "ACTIVE";
 
-    @DecimalMin(value = "0.0", message = "Balance cannot be negative")
-    BigDecimal balance;
+    @DecimalMin(
+            value = "0.0",
+            message = "Balance cannot be negative"
+    )
+    private BigDecimal balance;
 }
