@@ -4,6 +4,7 @@ import com.example.bankcards.entity.Card;
 import com.example.bankcards.repository.CardJpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -71,6 +72,7 @@ public class CardService {
                         ));
     }
 
+    @Transactional
     public Card update(String id, Card updated) {
         Card existing = getById(id);
         if (!existing.getNumber().equals(updated.getNumber())) {
@@ -98,6 +100,7 @@ public class CardService {
         cardJpaRepository.delete(card);
     }
 
+    @Transactional
     public void transfer(String fromId, String toId, BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(
@@ -120,18 +123,21 @@ public class CardService {
         to.setBalance(to.getBalance().add(amount));
     }
 
+    @Transactional
     public Card block(String id) {
         Card card = getById(id);
         card.setStatus("BLOCKED");
         return card;
     }
 
+    @Transactional
     public Card activate(String id) {
         Card card = getById(id);
         card.setStatus("ACTIVE");
         return card;
     }
 
+    @Transactional
     public Card requestBlock(String id) {
         Card card = getById(id);
         card.setStatus("BLOCK_REQUESTED");

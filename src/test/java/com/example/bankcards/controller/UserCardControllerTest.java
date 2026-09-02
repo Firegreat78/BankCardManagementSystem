@@ -396,7 +396,7 @@ class UserCardControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String jsonAlice = resultBob.getResponse().getContentAsString();
+        String jsonAlice = resultAlice.getResponse().getContentAsString();
         String jsonBob = resultBob.getResponse().getContentAsString();
 
         String idAliceCard = objectMapper.readTree(jsonAlice).get("id").asText();
