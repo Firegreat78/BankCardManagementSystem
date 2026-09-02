@@ -1,7 +1,7 @@
 package com.example.bankcards.service;
 
 import com.example.bankcards.entity.Card;
-import com.example.bankcards.repository.CardRepository;
+import com.example.bankcards.repository.CardJpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,14 +14,14 @@ import java.util.UUID;
 @Service
 public class CardService {
 
-    private final CardRepository cardRepository;
+    private final CardJpaRepository cardJpaRepository;
 
-    public CardService(CardRepository cardRepository) {
-        this.cardRepository = cardRepository;
+    public CardService(CardJpaRepository cardJpaRepository) {
+        this.cardJpaRepository = cardJpaRepository;
     }
 
     public Card create(Card card) {
-        boolean exists = cardRepository.existsByNumber(card.getNumber());
+        boolean exists = cardJpaRepository.existsByNumber(card.getNumber());
 
         if (exists) {
             throw new ResponseStatusException(
@@ -31,12 +31,12 @@ public class CardService {
         }
 
         card.setId(UUID.randomUUID().toString());
-        cardRepository.add(card);
+        cardJpaRepository.save(card);
         return card;
     }
 
     public List<Card> list(Integer page, Integer size) {
-        List<Card> cards = cardRepository.findAll();
+        List<Card> cards = cardJpaRepository.findAll();
 
         if (page == null && size == null) {
             return cards;
@@ -63,7 +63,7 @@ public class CardService {
     }
 
     public Card getById(String id) {
-        return cardRepository.findById(id)
+        return cardJpaRepository.findById(id)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
@@ -74,7 +74,7 @@ public class CardService {
     public Card update(String id, Card updated) {
         Card existing = getById(id);
         if (!existing.getNumber().equals(updated.getNumber())) {
-            boolean exists = cardRepository.existsByNumberAndIdNot(
+            boolean exists = cardJpaRepository.existsByNumberAndIdNot(
                     updated.getNumber(),
                     id
             );
@@ -94,12 +94,8 @@ public class CardService {
     }
 
     public void delete(String id) {
-        if (!cardRepository.deleteById(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Card not found"
-            );
-        }
+        Card card = getById(id);
+        cardJpaRepository.delete(card);
     }
 
     public void transfer(String fromId, String toId, BigDecimal amount) {
