@@ -1,6 +1,7 @@
 package com.example.bankcards.service;
 
 import com.example.bankcards.entity.Card;
+import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.CardJpaRepository;
 import org.springframework.http.HttpStatus;
@@ -177,21 +178,21 @@ public class CardService {
     @Transactional
     public Card block(String id) {
         Card card = getById(id);
-        card.setStatus("BLOCKED");
+        card.setStatus(CardStatus.BLOCKED);
         return card;
     }
 
     @Transactional
     public Card activate(String id) {
         Card card = getById(id);
-        card.setStatus("ACTIVE");
+        card.setStatus(CardStatus.ACTIVE);
         return card;
     }
 
     @Transactional
     public Card requestBlock(String id) {
         Card card = getById(id);
-        card.setStatus("BLOCK_REQUESTED");
+        card.setStatus(CardStatus.BLOCK_REQUESTED);
         return card;
     }
 }

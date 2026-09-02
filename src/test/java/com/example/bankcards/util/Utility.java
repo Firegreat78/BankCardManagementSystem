@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -93,7 +94,7 @@ public class Utility {
                 .header("Authorization", "Bearer " + token));
     }
 
-    public ResultActions getCardAction(MockMvc mockMvc, String token, String cardId, int page) throws Exception {
+    public ResultActions getCardAction(MockMvc mockMvc, String token, String cardId, Integer page, Integer size) throws Exception {
         return mockMvc.perform(get("/cards/" + cardId)
                 .param("page", String.valueOf(page))
                 .header("Authorization", "Bearer " + token));
@@ -111,7 +112,8 @@ public class Utility {
                 .content(objectMapper.writeValueAsString(Map.of(
                         "number", number,
                         "holderId", holderId,
-                        "balance", balance
+                        "balance", balance,
+                        "expirationDate", LocalDate.now().plusYears(3)
                 ))));
     }
 
