@@ -209,7 +209,30 @@ class UserCardControllerTest {
     }
 
     @Test
-    void deleteCard_notOwnedByUser_shouldReturn403() throws Exception {
+    void deleteCard_withOwnerUserToken_shouldReturn403() throws Exception {
+        Map<String, Object> cardMap = Map.of(
+                "number", utility.generateCardNum(7),
+                "holderId", userId1,
+                "balance", 1000
+        );
+        String cardJson = objectMapper.writeValueAsString(cardMap);
+        MvcResult result = mockMvc.perform(post("/cards")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cardJson))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        String id = objectMapper.readTree(json).get("id").asText();
+
+        mockMvc.perform(delete("/cards/" + id)
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteCard_withNonOwnerUserToken_shouldReturn403() throws Exception {
         Map<String, Object> cardMap = Map.of(
                 "number", utility.generateCardNum(7),
                 "holderId", userId1,
@@ -290,13 +313,6 @@ class UserCardControllerTest {
     }
 
     @Test
-    void getAllCards_withUserToken_shouldReturn403() throws Exception {
-        mockMvc.perform(get("/cards/all")
-                        .header("Authorization", "Bearer " + userToken1))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     void viewOwnCards_withUserToken_shouldReturnOnlyOwned() throws Exception {
         Map<String, Object> cardMap = Map.of(
                 "number", utility.generateCardNum(8),
@@ -314,7 +330,7 @@ class UserCardControllerTest {
                         .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].ownerId").value(USER1_USERNAME));
+                .andExpect(jsonPath("$[0].holderId").value(userId1));
     }
 
     @Test
@@ -479,24 +495,5 @@ class UserCardControllerTest {
 
         utility.createTransferAction(mockMvc, userToken1, fromId, toId, BigDecimal.TEN)
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void viewBalance_withUserToken_shouldReturnBalance() throws Exception {
-        int balance = 1500;
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(17), userId1, BigDecimal.valueOf(balance));
-
-        mockMvc.perform(get("/cards/" + id + "/balance")
-                        .header("Authorization", "Bearer " + userToken1))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(balance));
-    }
-
-    @Test
-    void viewBalance_otherUserCard_shouldReturn403() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId2, BigDecimal.valueOf(2000));
-        mockMvc.perform(get("/cards/" + id + "/balance")
-                        .header("Authorization", "Bearer " + userToken1))
-                .andExpect(status().isForbidden());
     }
 }

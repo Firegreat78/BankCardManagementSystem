@@ -55,8 +55,9 @@ public class CardController {
     public void transfer(
             @RequestParam String fromId,
             @RequestParam String toId,
-            @RequestParam BigDecimal amount) {
-        cardService.transfer(fromId, toId, amount);
+            @RequestParam BigDecimal amount,
+            Authentication authentication) {
+        cardService.transfer(fromId, toId, amount, authentication);
     }
 
     @PatchMapping("/{id}/block")

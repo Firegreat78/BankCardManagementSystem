@@ -131,7 +131,12 @@ public class CardService {
     }
 
     @Transactional
-    public void transfer(String fromId, String toId, BigDecimal amount) {
+    public void transfer(
+            String fromId,
+            String toId,
+            BigDecimal amount,
+            Authentication authentication
+    ) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -141,6 +146,22 @@ public class CardService {
 
         Card from = getById(fromId);
         Card to = getById(toId);
+
+        String username = authentication.getName();
+
+        User user = userJpaRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "User not found"
+                ));
+
+        if (!from.getHolderId().equals(user.getId())
+                || !to.getHolderId().equals(user.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Cards must belong to the authenticated user"
+            );
+        }
 
         if (from.getBalance().compareTo(amount) < 0) {
             throw new ResponseStatusException(

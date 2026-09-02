@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @SuppressWarnings("unused")
@@ -24,13 +25,30 @@ public class SecurityConfig {
                         request,
                         response,
                         authException) ->
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
+                        response.sendError(
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                "Unauthorized"
+                        )
+                ))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**")
+                        .requestMatchers(
+                                "/auth/**",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/h2-console/**"
+                        )
                         .permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/cards")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/cards/**")
+                        .hasRole("ADMIN")
+
                         .anyRequest()
                         .authenticated()
                 );
+
         return http.build();
     }
 }
