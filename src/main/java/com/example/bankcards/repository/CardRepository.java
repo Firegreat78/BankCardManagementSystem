@@ -29,4 +29,17 @@ public class CardRepository {
     public boolean deleteById(String id) {
         return cards.removeIf(c -> c.getId().equals(id));
     }
+
+    public boolean existsByNumber(String number) {
+        return cards.stream()
+                .anyMatch(c -> c.getNumber().equals(number));
+    }
+
+    public boolean existsByNumberAndIdNot(String number, String id) {
+        return cards.stream()
+                .anyMatch(c ->
+                        c.getNumber().equals(number)
+                                && !c.getId().equals(id)
+                );
+    }
 }

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -22,8 +21,7 @@ public class CardService {
     }
 
     public Card create(Card card) {
-        boolean exists = cardRepository.findAll().stream()
-                .anyMatch(c -> c.getNumber().equals(card.getNumber()));
+        boolean exists = cardRepository.existsByNumber(card.getNumber());
 
         if (exists) {
             throw new ResponseStatusException(
@@ -75,13 +73,11 @@ public class CardService {
 
     public Card update(String id, Card updated) {
         Card existing = getById(id);
-
         if (!existing.getNumber().equals(updated.getNumber())) {
-            boolean exists = cardRepository.findAll().stream()
-                    .anyMatch(c ->
-                            c.getNumber().equals(updated.getNumber())
-                                    && !c.getId().equals(id));
-
+            boolean exists = cardRepository.existsByNumberAndIdNot(
+                    updated.getNumber(),
+                    id
+            );
             if (exists) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
