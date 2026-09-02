@@ -2,6 +2,7 @@ package com.example.bankcards.controller;
 
 import com.example.bankcards.config.AdminConfig;
 import com.example.bankcards.entity.User;
+import com.example.bankcards.repository.UserJpaRepository;
 import com.example.bankcards.security.JwtUtil;
 import com.example.bankcards.entity.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +23,16 @@ public class AuthController {
     @Autowired
     private AdminConfig adminConfig;
 
-    @Autowired
-    private UserController userController;
+    private final UserJpaRepository userJpaRepository;
 
     private final JwtUtil jwtUtil;
 
-    public AuthController(JwtUtil jwtUtil) {
+    public AuthController(
+            JwtUtil jwtUtil,
+            UserJpaRepository userJpaRepository
+    ) {
         this.jwtUtil = jwtUtil;
+        this.userJpaRepository = userJpaRepository;
     }
 
     @PostMapping("/login")
@@ -42,12 +46,21 @@ public class AuthController {
             return Map.of("token", jwtUtil.generateToken(username, Role.ADMIN));
         }
 
-        for (User user : userController.getUsers()) {
-            if (user.getUsername().equals(username) && user.getPassword().equals(password)) {
-                return Map.of("token", jwtUtil.generateToken(username, Role.USER));
-            }
+        User user = userJpaRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Invalid credentials"
+                        )
+                );
+
+        if (user.getPassword().equals(password)) {
+            return Map.of("token", jwtUtil.generateToken(username, Role.USER));
         }
 
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid credentials"
+        );
     }
 }

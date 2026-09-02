@@ -1,8 +1,8 @@
 package com.example.bankcards.controller;
 
 import com.example.bankcards.entity.User;
+import com.example.bankcards.service.UserService;
 import jakarta.validation.Valid;
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,22 +12,20 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import com.example.bankcards.security.JwtUtil;
 import com.example.bankcards.entity.Role;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
-@Getter
 @RestController
 @RequestMapping("/users")
 public class UserController {
 
-    private final List<User> users = new ArrayList<>();
+    private final JwtUtil jwtUtil;
+    private final UserService userService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    public UserController(JwtUtil jwtUtil, UserService userService) {
+        this.jwtUtil = jwtUtil;
+        this.userService = userService;
+    }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -47,13 +45,6 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can register users");
         }
 
-        boolean exists = users.stream().anyMatch(u -> u.getUsername().equals(user.getUsername()));
-        if (exists) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
-        }
-
-        user.setId(UUID.randomUUID().toString());
-        users.add(user);
-        return user;
+        return userService.register(user);
     }
 }
