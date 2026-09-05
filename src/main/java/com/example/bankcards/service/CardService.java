@@ -4,6 +4,7 @@ import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.CardJpaRepository;
+import com.example.bankcards.security.CardNumberHasher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -22,17 +23,21 @@ public class CardService {
 
     private final CardJpaRepository cardJpaRepository;
     private final UserJpaRepository userJpaRepository;
+    private final CardNumberHasher cardNumberHasher;
 
     public CardService(
             CardJpaRepository cardJpaRepository,
-            UserJpaRepository userJpaRepository
+            UserJpaRepository userJpaRepository,
+            CardNumberHasher cardNumberHasher
     ) {
         this.cardJpaRepository = cardJpaRepository;
         this.userJpaRepository = userJpaRepository;
+        this.cardNumberHasher = cardNumberHasher;
     }
 
     public Card create(Card card) {
-        boolean exists = cardJpaRepository.existsByNumber(card.getNumber());
+        String numberHash = cardNumberHasher.hash(card.getNumber());
+        boolean exists = cardJpaRepository.existsByNumberHash(numberHash);
 
         if (exists) {
             throw new ResponseStatusException(
@@ -42,6 +47,7 @@ public class CardService {
         }
 
         card.setId(UUID.randomUUID().toString());
+        card.setNumberHash(numberHash);
         cardJpaRepository.save(card);
         return card;
     }
@@ -120,9 +126,10 @@ public class CardService {
     @Transactional
     public Card update(String id, Card updated) {
         Card existing = getById(id);
+        String updatedNumberHash = cardNumberHasher.hash(updated.getNumber());
         if (!existing.getNumber().equals(updated.getNumber())) {
-            boolean exists = cardJpaRepository.existsByNumberAndIdNot(
-                    updated.getNumber(),
+            boolean exists = cardJpaRepository.existsByNumberHashAndIdNot(
+                    updatedNumberHash,
                     id
             );
             if (exists) {
@@ -134,6 +141,7 @@ public class CardService {
         }
 
         existing.setNumber(updated.getNumber());
+        existing.setNumberHash(updatedNumberHash);
         existing.setHolderId(updated.getHolderId());
         existing.setBalance(updated.getBalance());
 

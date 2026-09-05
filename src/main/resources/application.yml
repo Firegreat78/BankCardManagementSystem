@@ -21,6 +21,10 @@ jwt:
   secret: mySuperSecretKeyForJwtGeneration123!@#456
   expiration: 86400000
 
+card:
+  encryption:
+    secret: myCardEncryptionSecretKey123!@#456
+
 server:
   port: 8080
 

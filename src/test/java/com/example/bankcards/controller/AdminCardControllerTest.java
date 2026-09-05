@@ -59,7 +59,7 @@ class AdminCardControllerTest {
         utility.createCardAction(mockMvc, adminToken, 1, userId1, balance)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.number").value(num))
+                .andExpect(jsonPath("$.number").value("**** **** **** " + num.substring(12)))
                 .andExpect(jsonPath("$.holderId").value(userId1))
                 .andExpect(jsonPath("$.balance").value(balance));
     }
@@ -179,8 +179,9 @@ class AdminCardControllerTest {
                 .andExpect(jsonPath("$.length()").value(pageSize));
 
         for (int i = 0; i < pageSize; i++) {
+            String num = utility.generateCardNum(i + 1);
             result.andExpect(
-                    jsonPath("$[" + i + "].number").value(utility.generateCardNum(i + 1))
+                    jsonPath("$[" + i + "].number").value("**** **** **** " + num.substring(12))
             );
         }
     }

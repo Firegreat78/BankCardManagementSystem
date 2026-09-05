@@ -94,7 +94,7 @@ class UserCardControllerTest {
         utility.createCardAction(mockMvc, adminToken, cardNum, userId1, BigDecimal.TEN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.number").value(cardNum));
+                .andExpect(jsonPath("$.number").value("**** **** **** " + cardNum.substring(12)));
     }
 
     @Test

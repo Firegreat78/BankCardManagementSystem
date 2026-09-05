@@ -1,9 +1,9 @@
 package com.example.bankcards.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
+import com.example.bankcards.security.CardNumberCryptoConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,7 +27,13 @@ public class Card {
             regexp = "^[0-9]{16}$",
             message = "Card number must be exactly 16 digits"
     )
+    @Convert(converter = CardNumberCryptoConverter.class)
+    @JsonSerialize(using = CardNumberMaskingSerializer.class)
     private String number;
+
+    @JsonIgnore
+    @Column(unique = true)
+    private String numberHash;
 
     @NotBlank
     private String holderId;
