@@ -5,7 +5,10 @@
 *.ipr
 out/
 target/
-.mvn/
+
+# Maven wrapper: the scripts and .properties are committed on purpose so a
+# fresh clone can build. Only the jar is ignored; mvnw downloads it on demand.
+.mvn/wrapper/maven-wrapper.jar
 
 # Maven
 log/
