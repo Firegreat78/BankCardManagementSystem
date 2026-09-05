@@ -120,6 +120,16 @@ public class Utility {
     public ResultActions createCardAction(
             MockMvc mockMvc,
             String token,
+            int number,
+            String holderId,
+            BigDecimal balance
+    ) throws Exception {
+        return createCardAction(mockMvc, token, generateCardNum(number), holderId, balance);
+    }
+
+    public ResultActions createCardAction(
+            MockMvc mockMvc,
+            String token,
             String number,
             String holderId,
             BigDecimal balance,
@@ -136,6 +146,17 @@ public class Utility {
                 ))));
     }
 
+    public ResultActions createCardAction(
+            MockMvc mockMvc,
+            String token,
+            int number,
+            String holderId,
+            BigDecimal balance,
+            LocalDate expirationDate
+    ) throws Exception {
+        return createCardAction(mockMvc, token, generateCardNum(number), holderId, balance, expirationDate);
+    }
+
     public String createCard(
             MockMvc mockMvc,
             String adminToken,
@@ -147,6 +168,15 @@ public class Utility {
                 .andReturn();
         String json = result.getResponse().getContentAsString();
         return objectMapper.readTree(json).get("id").asText();
+    }
+
+    public String createCard(
+            MockMvc mockMvc,
+            String adminToken,
+            int number,
+            String holderId,
+            BigDecimal balance) throws Exception {
+        return createCard(mockMvc, adminToken, generateCardNum(number), holderId, balance);
     }
 
     public ResultActions deleteCardAction(MockMvc mockMvc, String token, String cardId) throws Exception {

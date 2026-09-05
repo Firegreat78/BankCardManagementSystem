@@ -129,7 +129,7 @@ class UserCardControllerTest {
 
     @Test
     void blockCard_withAdminToken_shouldReturn200() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
 
         mockMvc.perform(patch("/cards/" + id + "/block")
                         .header("Authorization", "Bearer " + adminToken))
@@ -139,7 +139,7 @@ class UserCardControllerTest {
 
     @Test
     void deleteCard_withAdminToken_shouldReturn200() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
         mockMvc.perform(delete("/cards/" + id)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
@@ -147,7 +147,7 @@ class UserCardControllerTest {
 
     @Test
     void deleteCard_withOwnerUserToken_shouldReturn403() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
         mockMvc.perform(delete("/cards/" + id)
                         .header("Authorization", "Bearer " + userToken1))
                 .andExpect(status().isForbidden());
@@ -155,7 +155,7 @@ class UserCardControllerTest {
 
     @Test
     void deleteCard_withNonOwnerUserToken_shouldReturn403() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
 
         mockMvc.perform(delete("/cards/" + id)
                         .header("Authorization", "Bearer " + userToken2))
@@ -174,7 +174,7 @@ class UserCardControllerTest {
         utility.createCard(
                 mockMvc,
                 adminToken,
-                utility.generateCardNum(1),
+                1,
                 userId1,
                 BigDecimal.valueOf(100)
         );
@@ -182,7 +182,7 @@ class UserCardControllerTest {
         utility.createCard(
                 mockMvc,
                 adminToken,
-                utility.generateCardNum(2),
+                2,
                 userId2,
                 BigDecimal.valueOf(200)
         );
@@ -199,7 +199,7 @@ class UserCardControllerTest {
         String ownCardId = utility.createCard(
                 mockMvc,
                 adminToken,
-                utility.generateCardNum(3),
+                3,
                 userId1,
                 BigDecimal.valueOf(100)
         );
@@ -207,7 +207,7 @@ class UserCardControllerTest {
         utility.createCard(
                 mockMvc,
                 adminToken,
-                utility.generateCardNum(4),
+                4,
                 userId2,
                 BigDecimal.valueOf(200)
         );
@@ -223,7 +223,7 @@ class UserCardControllerTest {
     @Test
     void viewOwnCards_withPagination_shouldReturnPaginated() throws Exception {
         for (int i = 0; i < 3; i++) {
-            utility.createCard(mockMvc, adminToken, utility.generateCardNum(i), userId1, BigDecimal.valueOf(i));
+            utility.createCard(mockMvc, adminToken, i, userId1, BigDecimal.valueOf(i));
         }
 
         mockMvc.perform(get("/cards")
@@ -244,7 +244,7 @@ class UserCardControllerTest {
     @Test
     void requestBlockCard_withUserToken_shouldReturn200() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 
@@ -262,10 +262,10 @@ class UserCardControllerTest {
         BigDecimal transferAmt = BigDecimal.ONE;
 
         String fromId = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1), userId1, fromBal
+                mockMvc, adminToken, 1, userId1, fromBal
         );
         String toId = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(2), userId1, toBal
+                mockMvc, adminToken, 2, userId1, toBal
         );
         utility.createTransferAction(mockMvc, userToken1, fromId, toId, transferAmt).andExpect(status().isOk());
 
@@ -300,8 +300,8 @@ class UserCardControllerTest {
 
     @Test
     void transferToNotOwnCard_withUserToken_shouldReturn403() throws Exception {
-        String idAliceCard = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
-        String idBobCard = utility.createCard(mockMvc, adminToken, utility.generateCardNum(2), userId2, BigDecimal.TEN);
+        String idAliceCard = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+        String idBobCard = utility.createCard(mockMvc, adminToken, 2, userId2, BigDecimal.TEN);
 
         utility.createTransferAction(mockMvc, userToken1, idAliceCard, idBobCard, BigDecimal.ONE)
                 .andExpect(status().isForbidden());
@@ -316,8 +316,8 @@ class UserCardControllerTest {
 
     @Test
     void transfer_insufficientBalance_shouldReturn400() throws Exception {
-        String fromId = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.ONE);
-        String toId = utility.createCard(mockMvc, adminToken, utility.generateCardNum(2), userId1, BigDecimal.ZERO);
+        String fromId = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.ONE);
+        String toId = utility.createCard(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO);
 
         utility.createTransferAction(mockMvc, userToken1, fromId, toId, BigDecimal.TEN)
                 .andExpect(status().isBadRequest());
@@ -326,7 +326,7 @@ class UserCardControllerTest {
     @Test
     void requestUnblockCard_withUserToken_shouldReturn200() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 
@@ -342,7 +342,7 @@ class UserCardControllerTest {
     @Test
     void blockRequestedCard_withAdminToken_shouldBecomeBlocked() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 
@@ -360,7 +360,7 @@ class UserCardControllerTest {
     @Test
     void activateBlockRequestedCard_withAdminToken_shouldBecomeActive() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 
@@ -376,7 +376,7 @@ class UserCardControllerTest {
     @Test
     void activateUnblockRequestedCard_withAdminToken_shouldBecomeActive() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 
@@ -395,7 +395,7 @@ class UserCardControllerTest {
     @Test
     void blockUnblockRequestedCard_withAdminToken_shouldBecomeBlocked() throws Exception {
         String id = utility.createCard(
-                mockMvc, adminToken, utility.generateCardNum(1),
+                mockMvc, adminToken, 1,
                 userId1, BigDecimal.TEN
         );
 

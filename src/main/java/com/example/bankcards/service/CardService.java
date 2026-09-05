@@ -46,6 +46,7 @@ public class CardService {
         return card;
     }
 
+    @Transactional
     public List<Card> list(
             Integer page,
             Integer size,
@@ -70,6 +71,8 @@ public class CardService {
 
             cards = cardJpaRepository.findByHolderId(user.getId());
         }
+
+        cards.forEach(this::expireIfPastDue);
 
         if (page == null && size == null) {
             return cards;
@@ -179,6 +182,14 @@ public class CardService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Insufficient balance"
+            );
+        }
+
+        if (from.getStatus() != CardStatus.ACTIVE
+                || to.getStatus() != CardStatus.ACTIVE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Both cards must be active to transfer"
             );
         }
 

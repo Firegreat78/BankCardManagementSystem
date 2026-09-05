@@ -56,7 +56,7 @@ class AdminCardControllerTest {
         String num = utility.generateCardNum(1);
         BigDecimal balance = BigDecimal.TEN;
 
-        utility.createCardAction(mockMvc, adminToken, num, userId1, balance)
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, balance)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.number").value(num))
@@ -66,8 +66,7 @@ class AdminCardControllerTest {
 
     @Test
     void createCard_negativeBalance_shouldReturn400() throws Exception {
-        String num = utility.generateCardNum(1);
-        utility.createCardAction(mockMvc, adminToken, num, userId1, BigDecimal.valueOf(-1))
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, BigDecimal.valueOf(-1))
                 .andExpect(status().isBadRequest());
     }
 
@@ -92,24 +91,19 @@ class AdminCardControllerTest {
 
     @Test
     void createCard_duplicateNumber_shouldReturn409() throws Exception {
-        String card_num = utility.generateCardNum(1);
-
-        utility.createCardAction(mockMvc, adminToken, card_num, userId1, BigDecimal.ZERO).andExpect(status().isOk());
-        utility.createCardAction(mockMvc, adminToken, card_num, userId1, BigDecimal.ZERO).andExpect(status().isConflict());
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO).andExpect(status().isOk());
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO).andExpect(status().isConflict());
     }
 
     @Test
     void createCard_sameHolderDifferentNumber_shouldSucceed() throws Exception {
-        String card_num1 = utility.generateCardNum(1);
-        String card_num2 = utility.generateCardNum(2);
-
-        utility.createCardAction(mockMvc, adminToken, card_num1, userId1, BigDecimal.ZERO).andExpect(status().isOk());
-        utility.createCardAction(mockMvc, adminToken, card_num2, userId1, BigDecimal.ZERO).andExpect(status().isOk());
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO).andExpect(status().isOk());
+        utility.createCardAction(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO).andExpect(status().isOk());
     }
 
     @Test
     void deleteCard_shouldReturn200() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.ZERO);
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO);
 
         utility.deleteCardAction(mockMvc, adminToken, id).andExpect(status().isOk());
         utility.getCardAction(mockMvc, adminToken, id).andExpect(status().isNotFound());
@@ -122,8 +116,7 @@ class AdminCardControllerTest {
 
     @Test
     void deleteCard_afterDeletion_fetchShouldReturn404() throws Exception {
-        String num = utility.generateCardNum(1);
-        String card_id = utility.createCard(mockMvc, adminToken, num, userId1, BigDecimal.ZERO);
+        String card_id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO);
 
         utility.getCardAction(mockMvc, adminToken, card_id).andExpect(status().isOk());
         utility.deleteCardAction(mockMvc, adminToken, card_id);
@@ -138,7 +131,7 @@ class AdminCardControllerTest {
 
         for (int i = 0; i < AMOUNT; i++) {
             String cardNumber = utility.generateCardNum(i);
-            String cardId = utility.createCard(mockMvc, adminToken, cardNumber, userId1, BigDecimal.valueOf(i));
+            String cardId = utility.createCard(mockMvc, adminToken, i, userId1, BigDecimal.valueOf(i));
             cardNumbers.add(cardNumber);
             cardIds.add(cardId);
         }
@@ -173,7 +166,7 @@ class AdminCardControllerTest {
             utility.createCard(
                     mockMvc,
                     adminToken,
-                    utility.generateCardNum(i),
+                    i,
                     userId1,
                     BigDecimal.valueOf(100L * i)
             );
@@ -201,7 +194,7 @@ class AdminCardControllerTest {
             utility.createCard(
                     mockMvc,
                     adminToken,
-                    utility.generateCardNum(i),
+                    i,
                     userId1,
                     BigDecimal.valueOf(100L * i)
             );

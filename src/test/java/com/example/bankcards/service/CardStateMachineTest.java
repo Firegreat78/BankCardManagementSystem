@@ -146,7 +146,7 @@ class CardStateMachineTest {
         String id = utility.createCard(
                 mockMvc,
                 adminToken,
-                utility.generateCardNum(1),
+                1,
                 userId1,
                 BigDecimal.TEN
         );
