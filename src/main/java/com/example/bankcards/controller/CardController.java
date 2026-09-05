@@ -35,15 +35,16 @@ public class CardController {
     }
 
     @GetMapping("/{id}")
-    public Card getById(@PathVariable String id) {
-        return cardService.getById(id);
+    public Card getById(@PathVariable String id, Authentication authentication) {
+        return cardService.getById(id, authentication);
     }
 
     @PutMapping("/{id}")
     public Card update(
             @PathVariable String id,
-            @RequestBody @Valid Card updated) {
-        return cardService.update(id, updated);
+            @RequestBody @Valid Card updated,
+            Authentication authentication) {
+        return cardService.update(id, updated, authentication);
     }
 
     @DeleteMapping("/{id}")
@@ -61,22 +62,22 @@ public class CardController {
     }
 
     @PatchMapping("/{id}/block")
-    public Card block(@PathVariable String id) {
-        return cardService.block(id);
+    public Card block(@PathVariable String id, Authentication authentication) {
+        return cardService.block(id, authentication);
     }
 
     @PatchMapping("/{id}/activate")
-    public Card activate(@PathVariable String id) {
-        return cardService.activate(id);
+    public Card activate(@PathVariable String id, Authentication authentication) {
+        return cardService.activate(id, authentication);
     }
 
     @PatchMapping("/{id}/block-request")
-    public Card requestBlock(@PathVariable String id) {
-        return cardService.requestBlock(id);
+    public Card requestBlock(@PathVariable String id, Authentication authentication) {
+        return cardService.requestBlock(id, authentication);
     }
 
     @PatchMapping("/{id}/unblock-request")
-    public Card requestUnblock(@PathVariable String id) {
-        return cardService.requestUnblock(id);
+    public Card requestUnblock(@PathVariable String id, Authentication authentication) {
+        return cardService.requestUnblock(id, authentication);
     }
 }

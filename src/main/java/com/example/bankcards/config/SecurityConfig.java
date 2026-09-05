@@ -42,7 +42,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/cards")
                         .hasRole("ADMIN")
 
+                        .requestMatchers(HttpMethod.PUT, "/cards/**")
+                        .hasRole("ADMIN")
+
                         .requestMatchers(HttpMethod.DELETE, "/cards/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PATCH, "/cards/*/block")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PATCH, "/cards/*/activate")
                         .hasRole("ADMIN")
 
                         .anyRequest()

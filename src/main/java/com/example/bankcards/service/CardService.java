@@ -66,9 +66,7 @@ public class CardService {
             );
         }
 
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(authority ->
-                        authority.getAuthority().equals("ROLE_ADMIN"));
+        boolean isAdmin = isAdmin(authentication);
 
         List<Card> cards;
         if (size == null) {
@@ -96,6 +94,23 @@ public class CardService {
         return user.getId();
     }
 
+    private boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private void assertOwnerOrAdmin(Card card, Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return;
+        }
+        if (!card.getHolderId().equals(resolveUserId(authentication))) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You do not have access to this card"
+            );
+        }
+    }
+
     @Transactional
     public Card getById(String id) {
         Card card = cardJpaRepository.findById(id)
@@ -108,6 +123,13 @@ public class CardService {
         return card;
     }
 
+    @Transactional
+    public Card getById(String id, Authentication authentication) {
+        Card card = getById(id);
+        assertOwnerOrAdmin(card, authentication);
+        return card;
+    }
+
     private void expireIfPastDue(Card card) {
         if (card.getStatus() != CardStatus.EXPIRED
                 && card.getExpirationDate().isBefore(LocalDate.now())) {
@@ -116,7 +138,14 @@ public class CardService {
     }
 
     @Transactional
-    public Card update(String id, Card updated) {
+    public Card update(String id, Card updated, Authentication authentication) {
+        if (!isAdmin(authentication)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only admins can update card details"
+            );
+        }
+
         Card existing = getById(id);
         String updatedNumberHash = cardNumberHasher.hash(updated.getNumber());
         if (!existing.getNumber().equals(updated.getNumber())) {
@@ -198,27 +227,28 @@ public class CardService {
     }
 
     @Transactional
-    public Card block(String id) {
-        return transition(id, CardStatus.BLOCKED);
+    public Card block(String id, Authentication authentication) {
+        return transition(id, CardStatus.BLOCKED, authentication);
     }
 
     @Transactional
-    public Card activate(String id) {
-        return transition(id, CardStatus.ACTIVE);
+    public Card activate(String id, Authentication authentication) {
+        return transition(id, CardStatus.ACTIVE, authentication);
     }
 
     @Transactional
-    public Card requestBlock(String id) {
-        return transition(id, CardStatus.BLOCK_REQUESTED);
+    public Card requestBlock(String id, Authentication authentication) {
+        return transition(id, CardStatus.BLOCK_REQUESTED, authentication);
     }
 
     @Transactional
-    public Card requestUnblock(String id) {
-        return transition(id, CardStatus.UNBLOCK_REQUESTED);
+    public Card requestUnblock(String id, Authentication authentication) {
+        return transition(id, CardStatus.UNBLOCK_REQUESTED, authentication);
     }
 
-    private Card transition(String id, CardStatus to) {
+    private Card transition(String id, CardStatus to, Authentication authentication) {
         Card card = getById(id);
+        assertOwnerOrAdmin(card, authentication);
         if (!CardStateMachine.isTransitionAllowed(card.getStatus(), to)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
