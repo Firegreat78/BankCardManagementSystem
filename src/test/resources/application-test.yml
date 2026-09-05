@@ -10,3 +10,15 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+# Throwaway values for the test profile only. These override the environment
+# placeholders in application.yml so the suite runs without external setup.
+# They are never used by a real deployment.
+jwt:
+  secret: test-only-jwt-secret-not-used-in-any-deployment-0123456789
+card:
+  encryption:
+    secret: test-only-card-encryption-secret-not-used-in-deployment
+admin:
+  username: user
+  password: pass

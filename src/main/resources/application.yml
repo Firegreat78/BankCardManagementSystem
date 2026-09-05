@@ -9,22 +9,25 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
+    open-in-view: false
   security:
     basic:
       enabled: false
 
+# Secrets are supplied through the environment on purpose: there is no default,
+# so the application refuses to start rather than run with a known key.
 jwt:
-  secret: mySuperSecretKeyForJwtGeneration123!@#456
-  expiration: 86400000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 card:
   encryption:
-    secret: myCardEncryptionSecretKey123!@#456
+    secret: ${CARD_ENCRYPTION_SECRET}
 
 server:
   port: 8080
 
 admin:
-  username: user
-  password: pass
+  username: ${ADMIN_USERNAME}
+  password: ${ADMIN_PASSWORD}

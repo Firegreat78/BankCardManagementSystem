@@ -23,6 +23,11 @@ services:
       DB_NAME: ${DB_NAME:-bankcards}
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      # No defaults: compose aborts if these are missing from .env
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (see .env.example)}
+      CARD_ENCRYPTION_SECRET: ${CARD_ENCRYPTION_SECRET:?set CARD_ENCRYPTION_SECRET in .env (see .env.example)}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?set ADMIN_USERNAME in .env (see .env.example)}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env (see .env.example)}
     ports:
       - "8080:8080"
     depends_on:
