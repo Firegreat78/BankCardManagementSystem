@@ -21,7 +21,6 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.hamcrest.Matchers.comparesEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /*
@@ -136,20 +135,6 @@ class UserCardControllerTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("BLOCKED"));
-    }
-
-    @Test
-    void activateCard_withAdminToken_shouldReturn200() throws Exception {
-        String id = utility.createCard(mockMvc, adminToken, utility.generateCardNum(1), userId1, BigDecimal.TEN);
-
-        mockMvc.perform(patch("/cards/" + id + "/block")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(patch("/cards/" + id + "/activate")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
@@ -336,5 +321,93 @@ class UserCardControllerTest {
 
         utility.createTransferAction(mockMvc, userToken1, fromId, toId, BigDecimal.TEN)
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void requestUnblockCard_withUserToken_shouldReturn200() throws Exception {
+        String id = utility.createCard(
+                mockMvc, adminToken, utility.generateCardNum(1),
+                userId1, BigDecimal.TEN
+        );
+
+        utility.blockCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk());
+
+        utility.requestCardUnblockAction(mockMvc, userToken1, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.UNBLOCK_REQUESTED.name()));
+    }
+
+    @Test
+    void blockRequestedCard_withAdminToken_shouldBecomeBlocked() throws Exception {
+        String id = utility.createCard(
+                mockMvc, adminToken, utility.generateCardNum(1),
+                userId1, BigDecimal.TEN
+        );
+
+        utility.requestCardBlockAction(mockMvc, userToken1, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.BLOCK_REQUESTED.name()));
+
+        utility.blockCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.BLOCKED.name()));
+    }
+
+    @Test
+    void activateBlockRequestedCard_withAdminToken_shouldBecomeActive() throws Exception {
+        String id = utility.createCard(
+                mockMvc, adminToken, utility.generateCardNum(1),
+                userId1, BigDecimal.TEN
+        );
+
+        utility.requestCardBlockAction(mockMvc, userToken1, id)
+                .andExpect(status().isOk());
+
+        utility.activateCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.ACTIVE.name()));
+    }
+
+    @Test
+    void activateUnblockRequestedCard_withAdminToken_shouldBecomeActive() throws Exception {
+        String id = utility.createCard(
+                mockMvc, adminToken, utility.generateCardNum(1),
+                userId1, BigDecimal.TEN
+        );
+
+        utility.blockCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk());
+
+        utility.requestCardUnblockAction(mockMvc, userToken1, id)
+                .andExpect(status().isOk());
+
+        utility.activateCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.ACTIVE.name()));
+    }
+
+    @Test
+    void blockUnblockRequestedCard_withAdminToken_shouldBecomeBlocked() throws Exception {
+        String id = utility.createCard(
+                mockMvc, adminToken, utility.generateCardNum(1),
+                userId1, BigDecimal.TEN
+        );
+
+        utility.blockCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk());
+
+        utility.requestCardUnblockAction(mockMvc, userToken1, id)
+                .andExpect(status().isOk());
+
+        utility.blockCardAction(mockMvc, adminToken, id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value(CardStatus.BLOCKED.name()));
     }
 }

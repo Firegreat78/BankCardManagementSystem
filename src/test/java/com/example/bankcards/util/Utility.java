@@ -105,7 +105,26 @@ public class Utility {
             String token,
             String number,
             String holderId,
-            BigDecimal balance) throws Exception {
+            BigDecimal balance
+    ) throws Exception {
+        return createCardAction(
+                mockMvc,
+                token,
+                number,
+                holderId,
+                balance,
+                LocalDate.now().plusYears(3)
+        );
+    }
+
+    public ResultActions createCardAction(
+            MockMvc mockMvc,
+            String token,
+            String number,
+            String holderId,
+            BigDecimal balance,
+            LocalDate expirationDate
+    ) throws Exception {
         return mockMvc.perform(post("/cards")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -113,7 +132,7 @@ public class Utility {
                         "number", number,
                         "holderId", holderId,
                         "balance", balance,
-                        "expirationDate", LocalDate.now().plusYears(3)
+                        "expirationDate", expirationDate
                 ))));
     }
 
@@ -146,5 +165,25 @@ public class Utility {
                 .param("toId", toCardId)
                 .param("amount", balance.toString())
                 .header("Authorization", "Bearer " + token));
+    }
+
+    public ResultActions requestCardBlockAction(MockMvc mockMvc, String userToken, String cardId) throws Exception {
+        return mockMvc.perform(patch("/cards/" + cardId + "/block-request")
+                .header("Authorization", "Bearer " + userToken));
+    }
+
+    public ResultActions requestCardUnblockAction(MockMvc mockMvc, String userToken, String cardId) throws Exception {
+        return mockMvc.perform(patch("/cards/" + cardId + "/unblock-request")
+                .header("Authorization", "Bearer " + userToken));
+    }
+
+    public ResultActions blockCardAction(MockMvc mockMvc, String adminToken, String cardId) throws Exception {
+        return mockMvc.perform(patch("/cards/" + cardId + "/block")
+                .header("Authorization", "Bearer " + adminToken));
+    }
+
+    public ResultActions activateCardAction(MockMvc mockMvc, String adminToken, String cardId) throws Exception {
+        return mockMvc.perform(patch("/cards/" + cardId + "/activate")
+                .header("Authorization", "Bearer " + adminToken));
     }
 }

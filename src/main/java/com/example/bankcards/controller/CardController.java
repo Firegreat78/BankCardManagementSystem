@@ -74,4 +74,9 @@ public class CardController {
     public Card requestBlock(@PathVariable String id) {
         return cardService.requestBlock(id);
     }
+
+    @PatchMapping("/{id}/unblock-request")
+    public Card requestUnblock(@PathVariable String id) {
+        return cardService.requestUnblock(id);
+    }
 }

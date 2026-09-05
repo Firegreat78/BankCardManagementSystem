@@ -177,22 +177,33 @@ public class CardService {
 
     @Transactional
     public Card block(String id) {
-        Card card = getById(id);
-        card.setStatus(CardStatus.BLOCKED);
-        return card;
+        return transition(id, CardStatus.BLOCKED);
     }
 
     @Transactional
     public Card activate(String id) {
-        Card card = getById(id);
-        card.setStatus(CardStatus.ACTIVE);
-        return card;
+        return transition(id, CardStatus.ACTIVE);
     }
 
     @Transactional
     public Card requestBlock(String id) {
+        return transition(id, CardStatus.BLOCK_REQUESTED);
+    }
+
+    @Transactional
+    public Card requestUnblock(String id) {
+        return transition(id, CardStatus.UNBLOCK_REQUESTED);
+    }
+
+    private Card transition(String id, CardStatus to) {
         Card card = getById(id);
-        card.setStatus(CardStatus.BLOCK_REQUESTED);
+        if (!CardStateMachine.isTransitionAllowed(card.getStatus(), to)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot transition card from " + card.getStatus() + " to " + to
+            );
+        }
+        card.setStatus(to);
         return card;
     }
 }

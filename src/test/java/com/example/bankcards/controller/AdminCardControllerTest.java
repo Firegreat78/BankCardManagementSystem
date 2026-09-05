@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -39,15 +40,15 @@ class AdminCardControllerTest {
     private String userId2;
 
     private static final String USER1_USERNAME = "alice";
-    private static final String USER1_PASSWORD = "alice123".toLowerCase(Locale.ROOT);
+    private static final String USER1_PASSWORD = "alice123";
     private static final String USER2_USERNAME = "bob";
     private static final String USER2_PASSWORD = "bob123";
 
     @BeforeEach
     public void setUp() throws Exception {
         adminToken = utility.loginAdmin(mockMvc);
-        if (userId1 == null) userId1 = utility.registerUser(mockMvc, adminToken, USER1_USERNAME, USER1_PASSWORD);
-        if (userId2 == null) userId2 = utility.registerUser(mockMvc, adminToken, USER2_USERNAME, USER2_PASSWORD);
+        userId1 = utility.registerUser(mockMvc, adminToken, USER1_USERNAME, USER1_PASSWORD);
+        userId2 = utility.registerUser(mockMvc, adminToken, USER2_USERNAME, USER2_PASSWORD);
     }
 
     @Test
@@ -165,44 +166,59 @@ class AdminCardControllerTest {
 
     @Test
     void getCards_onlySizeWithoutPage_shouldReturnFirstPage() throws Exception {
-        for (int i = 1; i <= 5; i++) {
-            utility.createCard(mockMvc, adminToken, utility.generateCardNum(i), userId1, BigDecimal.valueOf(100 * i));
+        int cardCount = 5;
+        int pageSize = 2;
+
+        for (int i = 1; i <= cardCount; i++) {
+            utility.createCard(
+                    mockMvc,
+                    adminToken,
+                    utility.generateCardNum(i),
+                    userId1,
+                    BigDecimal.valueOf(100L * i)
+            );
         }
 
-        mockMvc.perform(get("/cards")
-                        .param("size", "2")
+        ResultActions result = mockMvc.perform(get("/cards")
+                        .param("size", String.valueOf(pageSize))
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].number").value(utility.generateCardNum(1)))
-                .andExpect(jsonPath("$[1].number").value(utility.generateCardNum(2)));
+                .andExpect(jsonPath("$.length()").value(pageSize));
+
+        for (int i = 0; i < pageSize; i++) {
+            result.andExpect(
+                    jsonPath("$[" + i + "].number").value(utility.generateCardNum(i + 1))
+            );
+        }
     }
 
     @Test
     void getCards_withPagination_shouldReturnPaginated() throws Exception {
-        for (int i = 1; i <= 5; i++) {
-            utility.createCard(mockMvc, adminToken, utility.generateCardNum(i), userId1, BigDecimal.valueOf(100 * i));
+        int cardCount = 5;
+        int pageSize = 2;
+
+        for (int i = 1; i <= cardCount; i++) {
+            utility.createCard(
+                    mockMvc,
+                    adminToken,
+                    utility.generateCardNum(i),
+                    userId1,
+                    BigDecimal.valueOf(100L * i)
+            );
         }
+        int pageCount = (cardCount + pageSize - 1) / pageSize;
 
-        mockMvc.perform(get("/cards")
-                        .param("page", "0")
-                        .param("size", "2")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
-
-        mockMvc.perform(get("/cards")
-                        .param("page", "1")
-                        .param("size", "2")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
-
-        mockMvc.perform(get("/cards")
-                        .param("page", "2")
-                        .param("size", "2")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+        for (int page = 0; page < pageCount; page++) {
+            int expectedSize = Math.min(
+                    pageSize,
+                    cardCount - page * pageSize
+            );
+            mockMvc.perform(get("/cards")
+                            .param("page", String.valueOf(page))
+                            .param("size", String.valueOf(pageSize))
+                            .header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(expectedSize));
+        }
     }
 }
