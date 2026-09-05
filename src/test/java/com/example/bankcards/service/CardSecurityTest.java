@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SuppressWarnings("unused")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class CardSecurityTest {
 
     @Autowired
@@ -90,6 +92,13 @@ class CardSecurityTest {
         );
 
         assertThat(rawColumnValue).isNotEqualTo(plainNumber);
+    }
+
+    @Test
+    void createCard_shouldNotExposeNumberHash() throws Exception {
+        utility.createCardAction(mockMvc, adminToken, 1, userId1, BigDecimal.TEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.numberHash").doesNotExist());
     }
 
     @Test

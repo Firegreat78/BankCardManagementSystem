@@ -1,5 +1,7 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.dto.UserRegisterRequest;
+import com.example.bankcards.dto.UserResponse;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.service.UserService;
 import jakarta.validation.Valid;
@@ -29,7 +31,7 @@ public class UserController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public User register(@RequestBody @Valid User user,
+    public UserResponse register(@RequestBody @Valid UserRegisterRequest request,
                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         // Check authentication
@@ -45,6 +47,10 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can register users");
         }
 
-        return userService.register(user);
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(request.getPassword());
+
+        return UserResponse.from(userService.register(user));
     }
 }

@@ -1,5 +1,8 @@
 package com.example.bankcards.controller;
 
+import com.example.bankcards.dto.CardCreateRequest;
+import com.example.bankcards.dto.CardResponse;
+import com.example.bankcards.dto.CardUpdateRequest;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.service.CardService;
 import jakarta.validation.Valid;
@@ -22,29 +25,42 @@ public class CardController {
     }
 
     @PostMapping
-    public Card create(@RequestBody @Valid Card card) {
-        return cardService.create(card);
+    public CardResponse create(@RequestBody @Valid CardCreateRequest request) {
+        Card card = new Card();
+        card.setNumber(request.getNumber());
+        card.setHolderId(request.getHolderId());
+        card.setBalance(request.getBalance());
+        card.setExpirationDate(request.getExpirationDate());
+        return CardResponse.from(cardService.create(card));
     }
 
     @GetMapping
-    public List<Card> list(
+    public List<CardResponse> list(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             Authentication authentication) {
-        return cardService.list(page, size, authentication);
+        return cardService.list(page, size, authentication)
+                .stream()
+                .map(CardResponse::from)
+                .toList();
     }
 
     @GetMapping("/{id}")
-    public Card getById(@PathVariable String id, Authentication authentication) {
-        return cardService.getById(id, authentication);
+    public CardResponse getById(@PathVariable String id, Authentication authentication) {
+        return CardResponse.from(cardService.getById(id, authentication));
     }
 
     @PutMapping("/{id}")
-    public Card update(
+    public CardResponse update(
             @PathVariable String id,
-            @RequestBody @Valid Card updated,
+            @RequestBody @Valid CardUpdateRequest request,
             Authentication authentication) {
-        return cardService.update(id, updated, authentication);
+        Card updated = new Card();
+        updated.setNumber(request.getNumber());
+        updated.setHolderId(request.getHolderId());
+        updated.setBalance(request.getBalance());
+        updated.setExpirationDate(request.getExpirationDate());
+        return CardResponse.from(cardService.update(id, updated, authentication));
     }
 
     @DeleteMapping("/{id}")
@@ -62,22 +78,22 @@ public class CardController {
     }
 
     @PatchMapping("/{id}/block")
-    public Card block(@PathVariable String id, Authentication authentication) {
-        return cardService.block(id, authentication);
+    public CardResponse block(@PathVariable String id, Authentication authentication) {
+        return CardResponse.from(cardService.block(id, authentication));
     }
 
     @PatchMapping("/{id}/activate")
-    public Card activate(@PathVariable String id, Authentication authentication) {
-        return cardService.activate(id, authentication);
+    public CardResponse activate(@PathVariable String id, Authentication authentication) {
+        return CardResponse.from(cardService.activate(id, authentication));
     }
 
     @PatchMapping("/{id}/block-request")
-    public Card requestBlock(@PathVariable String id, Authentication authentication) {
-        return cardService.requestBlock(id, authentication);
+    public CardResponse requestBlock(@PathVariable String id, Authentication authentication) {
+        return CardResponse.from(cardService.requestBlock(id, authentication));
     }
 
     @PatchMapping("/{id}/unblock-request")
-    public Card requestUnblock(@PathVariable String id, Authentication authentication) {
-        return cardService.requestUnblock(id, authentication);
+    public CardResponse requestUnblock(@PathVariable String id, Authentication authentication) {
+        return CardResponse.from(cardService.requestUnblock(id, authentication));
     }
 }

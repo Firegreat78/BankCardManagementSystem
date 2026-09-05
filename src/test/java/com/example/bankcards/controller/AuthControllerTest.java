@@ -61,6 +61,15 @@ class AuthControllerTest {
     }
 
     @Test
+    void registerUser_shouldNotReturnPassword() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+
+        utility.registerUserAction(mockMvc, adminToken, "alice", "pass")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
     void registerUser_withUserToken_isForbidden() throws Exception {
         String adminToken = utility.loginAdmin(mockMvc);
 

@@ -99,6 +99,21 @@
     Java 17+, Spring Boot, Spring Security, Spring Data JPA, PostgreSQL/MySQL, Liquibase, Docker, JWT, Swagger (OpenAPI)
   </p>
 
+<h2>🐳 Запуск через Docker Compose</h2>
+  <p><strong>Требования:</strong> Docker, Docker Compose.</p>
+  <p><strong>Запуск стека</strong> (PostgreSQL 16 + приложение):</p>
+  <pre><code>docker compose up -d --build</code></pre>
+  <p>Приложение поднимется на <code>http://localhost:8080</code>, PostgreSQL — на порту <code>5432</code>. Flyway применит миграции из <code>src/main/resources/db/migration</code> при старте приложения.</p>
+  <p><strong>Остановка стека:</strong></p>
+  <pre><code>docker compose down</code></pre>
+  <p>Для удаления также данных БД (том <code>db-data</code>):</p>
+  <pre><code>docker compose down -v</code></pre>
+  <p><strong>Переменные окружения</strong> (см. <code>.env.example</code>): <code>DB_NAME</code>, <code>DB_USERNAME</code>, <code>DB_PASSWORD</code> — задаются в файле <code>.env</code> (не коммитится) или напрямую в окружении. Внутри Compose приложение обращается к БД по имени сервиса <code>db</code>, не по <code>localhost</code>.</p>
+  <p><strong>Данные PostgreSQL</strong> сохраняются в именованном Docker-томе <code>db-data</code>, переживают перезапуск контейнеров.</p>
+  <p><strong>Тесты</strong> (используют встроенный H2, отдельно от Docker-стека):</p>
+  <pre><code>./mvnw test</code></pre>
+  <p>Проект требует JDK 21 для сборки (Lombok некорректно работает на других версиях). Обёртка <code>./mvnw</code> сама находит и использует JDK 21, если она установлена в системе — отдельная настройка <code>JAVA_HOME</code> не нужна. При использовании системного <code>mvn</code> вместо обёртки задайте <code>JAVA_HOME</code> на JDK 21 вручную.</p>
+
 <h2> 📤 Формат сдачи</h2>
 <p>
 Весь код и изменения принимаются только через git-репозиторий с открытым доступом к проекту. Отправка файлов в любом виде не принимается.

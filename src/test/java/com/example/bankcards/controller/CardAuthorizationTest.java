@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -180,5 +181,23 @@ class CardAuthorizationTest {
 
         utility.requestCardBlockAction(mockMvc, userToken1, id)
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void create_clientSuppliedIdAndStatus_shouldBeIgnored() throws Exception {
+        mockMvc.perform(post("/cards")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "id", "client-chosen-id",
+                                "number", utility.generateCardNum(1),
+                                "holderId", userId1,
+                                "balance", BigDecimal.TEN,
+                                "status", CardStatus.BLOCKED.name(),
+                                "expirationDate", LocalDate.now().plusYears(1)
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not("client-chosen-id")))
+                .andExpect(jsonPath("$.status").value(CardStatus.ACTIVE.name()));
     }
 }
