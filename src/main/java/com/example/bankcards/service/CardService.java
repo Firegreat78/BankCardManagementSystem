@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.example.bankcards.repository.UserJpaRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -94,13 +95,23 @@ public class CardService {
         return cards.subList(start, end);
     }
 
+    @Transactional
     public Card getById(String id) {
-        return cardJpaRepository.findById(id)
+        Card card = cardJpaRepository.findById(id)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
                                 "Card not found"
                         ));
+        expireIfPastDue(card);
+        return card;
+    }
+
+    private void expireIfPastDue(Card card) {
+        if (card.getStatus() != CardStatus.EXPIRED
+                && card.getExpirationDate().isBefore(LocalDate.now())) {
+            card.setStatus(CardStatus.EXPIRED);
+        }
     }
 
     @Transactional
@@ -199,7 +210,7 @@ public class CardService {
         Card card = getById(id);
         if (!CardStateMachine.isTransitionAllowed(card.getStatus(), to)) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
+                    HttpStatus.BAD_REQUEST,
                     "Cannot transition card from " + card.getStatus() + " to " + to
             );
         }
