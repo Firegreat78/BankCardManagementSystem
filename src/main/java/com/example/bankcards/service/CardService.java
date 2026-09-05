@@ -5,6 +5,8 @@ import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.CardJpaRepository;
 import com.example.bankcards.security.CardNumberHasher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -14,7 +16,6 @@ import com.example.bankcards.repository.UserJpaRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,32 +59,6 @@ public class CardService {
             Integer size,
             Authentication authentication
     ) {
-        List<Card> cards;
-
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(authority ->
-                        authority.getAuthority().equals("ROLE_ADMIN"));
-
-        if (isAdmin) {
-            cards = cardJpaRepository.findAll();
-        } else {
-            String username = authentication.getName();
-
-            User user = userJpaRepository.findByUsername(username)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.UNAUTHORIZED,
-                            "Authenticated user not found"
-                    ));
-
-            cards = cardJpaRepository.findByHolderId(user.getId());
-        }
-
-        cards.forEach(this::expireIfPastDue);
-
-        if (page == null && size == null) {
-            return cards;
-        }
-
         if (page != null && size == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -91,17 +66,34 @@ public class CardService {
             );
         }
 
-        if (page == null) {
-            page = 0;
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        authority.getAuthority().equals("ROLE_ADMIN"));
+
+        List<Card> cards;
+        if (size == null) {
+            cards = isAdmin
+                    ? cardJpaRepository.findAll()
+                    : cardJpaRepository.findByHolderId(resolveUserId(authentication));
+        } else {
+            Pageable pageable = PageRequest.of(page == null ? 0 : page, size);
+            cards = isAdmin
+                    ? cardJpaRepository.findAll(pageable).getContent()
+                    : cardJpaRepository.findByHolderId(resolveUserId(authentication), pageable).getContent();
         }
 
-        int start = page * size;
-        if (start >= cards.size()) {
-            return Collections.emptyList();
-        }
+        cards.forEach(this::expireIfPastDue);
+        return cards;
+    }
 
-        int end = Math.min(start + size, cards.size());
-        return cards.subList(start, end);
+    private String resolveUserId(Authentication authentication) {
+        String username = authentication.getName();
+        User user = userJpaRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Authenticated user not found"
+                ));
+        return user.getId();
     }
 
     @Transactional

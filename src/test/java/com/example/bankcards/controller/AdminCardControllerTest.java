@@ -14,7 +14,6 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Locale;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -37,7 +36,6 @@ class AdminCardControllerTest {
 
     private String adminToken;
     private String userId1;
-    private String userId2;
 
     private static final String USER1_USERNAME = "alice";
     private static final String USER1_PASSWORD = "alice123";
@@ -48,7 +46,6 @@ class AdminCardControllerTest {
     public void setUp() throws Exception {
         adminToken = utility.loginAdmin(mockMvc);
         userId1 = utility.registerUser(mockMvc, adminToken, USER1_USERNAME, USER1_PASSWORD);
-        userId2 = utility.registerUser(mockMvc, adminToken, USER2_USERNAME, USER2_PASSWORD);
     }
 
     @Test
@@ -126,14 +123,9 @@ class AdminCardControllerTest {
     @Test
     void getCards_shouldReturnList() throws Exception {
         final int AMOUNT = 3;
-        ArrayList<String> cardNumbers = new ArrayList<>(AMOUNT);
-        ArrayList<String> cardIds = new ArrayList<>(AMOUNT);
-
         for (int i = 0; i < AMOUNT; i++) {
             String cardNumber = utility.generateCardNum(i);
             String cardId = utility.createCard(mockMvc, adminToken, i, userId1, BigDecimal.valueOf(i));
-            cardNumbers.add(cardNumber);
-            cardIds.add(cardId);
         }
 
         mockMvc.perform(get("/cards")
@@ -214,5 +206,31 @@ class AdminCardControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(expectedSize));
         }
+    }
+
+    @Test
+    void getCards_withPagination_onLargeDataset_shouldReturnOnlyRequestedPage() throws Exception {
+        int cardCount = 200;
+        int pageSize = 10;
+
+        for (int i = 1; i <= cardCount; i++) {
+            utility.createCard(
+                    mockMvc,
+                    adminToken,
+                    i,
+                    userId1,
+                    BigDecimal.valueOf(100L * i)
+            );
+        }
+
+        int lastPage = (cardCount / pageSize) - 1;
+        mockMvc.perform(get("/cards")
+                        .param("page", String.valueOf(lastPage))
+                        .param("size", String.valueOf(pageSize))
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(pageSize))
+                .andExpect(jsonPath("$[0].number")
+                        .value("**** **** **** " + utility.generateCardNum(cardCount - pageSize + 1).substring(12)));
     }
 }
