@@ -1,1 +1,416 @@
-# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+openapi: 3.0.1
+info:
+  title: Bank Cards API
+  description: "Bank card management API. Obtain a token from POST /auth/login, then\
+    \ authorize with it to call the protected endpoints."
+  version: 1.0.0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+security:
+- bearerAuth: []
+tags:
+- name: Authentication
+  description: Token issuing
+- name: Users
+  description: User administration
+- name: Cards
+  description: "Card administration, cardholder self-service and transfers"
+paths:
+  /cards/{id}:
+    get:
+      tags:
+      - Cards
+      summary: Get one card
+      description: Allowed for the card holder and for administrators.
+      operationId: getById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+    put:
+      tags:
+      - Cards
+      summary: Update a card
+      description: Administrators only. Status is not client-controlled and changes
+        only through the status endpoints.
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardUpdateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+    delete:
+      tags:
+      - Cards
+      summary: Delete a card
+      description: Administrators only.
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /users/register:
+    post:
+      tags:
+      - Users
+      summary: Register a user
+      description: Administrators only. Role defaults to USER; passing ADMIN creates
+        another administrator.
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /cards:
+    get:
+      tags:
+      - Cards
+      summary: List cards
+      description: "Administrators see every card, other users only their own. Supports\
+        \ paging and filtering by status and last four digits."
+      operationId: list
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        required: false
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          format: int32
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - BLOCK_REQUESTED
+          - BLOCKED
+          - UNBLOCK_REQUESTED
+          - EXPIRED
+      - name: last4
+        in: query
+        required: false
+        schema:
+          pattern: "^[0-9]{4}$"
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardResponse'
+    post:
+      tags:
+      - Cards
+      summary: Create a card
+      description: Administrators only. The number is encrypted at rest and returned
+        masked.
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardCreateRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+  /cards/transfer:
+    post:
+      tags:
+      - Cards
+      summary: Transfer between own cards
+      description: Both cards must belong to the caller and be active. Amounts allow
+        at most two decimals.
+      operationId: transfer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+  /auth/login:
+    post:
+      tags:
+      - Authentication
+      summary: Log in
+      description: Returns a JWT to send as 'Bearer <token>'. Paste it into Authorize
+        to call the other endpoints.
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+      security: []
+  /cards/{id}/unblock-request:
+    patch:
+      tags:
+      - Cards
+      summary: Request an unblock
+      description: Card holder asks an administrator to unblock the card.
+      operationId: requestUnblock
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+  /cards/{id}/block:
+    patch:
+      tags:
+      - Cards
+      summary: Block a card
+      description: Administrators only.
+      operationId: block
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+  /cards/{id}/block-request:
+    patch:
+      tags:
+      - Cards
+      summary: Request a block
+      description: Card holder asks an administrator to block the card.
+      operationId: requestBlock
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+  /cards/{id}/activate:
+    patch:
+      tags:
+      - Cards
+      summary: Activate a card
+      description: Administrators only. Expired cards cannot be activated.
+      operationId: activate
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+components:
+  schemas:
+    CardUpdateRequest:
+      required:
+      - balance
+      - expirationDate
+      - holderId
+      - number
+      type: object
+      properties:
+        number:
+          pattern: "^[0-9]{16}$"
+          type: string
+        holderId:
+          type: string
+        balance:
+          minimum: 0.0
+          exclusiveMinimum: false
+          type: number
+        expirationDate:
+          type: string
+          format: date
+    CardResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        holderId:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - BLOCK_REQUESTED
+          - BLOCKED
+          - UNBLOCK_REQUESTED
+          - EXPIRED
+        balance:
+          type: number
+        expirationDate:
+          type: string
+          format: date
+    UserRegisterRequest:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - USER
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - USER
+    CardCreateRequest:
+      required:
+      - balance
+      - expirationDate
+      - holderId
+      - number
+      type: object
+      properties:
+        number:
+          pattern: "^[0-9]{16}$"
+          type: string
+        holderId:
+          type: string
+        balance:
+          minimum: 0.0
+          exclusiveMinimum: false
+          type: number
+        expirationDate:
+          type: string
+          format: date
+    TransferRequest:
+      required:
+      - amount
+      - fromId
+      - toId
+      type: object
+      properties:
+        fromId:
+          type: string
+        toId:
+          type: string
+        amount:
+          minimum: 0
+          exclusiveMinimum: true
+          type: number
+    LoginRequest:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

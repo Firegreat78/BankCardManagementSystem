@@ -7,6 +7,8 @@ import com.example.bankcards.dto.TransferRequest;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.service.CardService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -21,6 +23,7 @@ import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/cards")
+@Tag(name = "Cards", description = "Card administration, cardholder self-service and transfers")
 @Validated
 @SuppressWarnings("unused")
 public class CardController {
@@ -31,6 +34,7 @@ public class CardController {
         this.cardService = cardService;
     }
 
+    @Operation(summary = "Create a card", description = "Administrators only. The number is encrypted at rest and returned masked.")
     @PostMapping
     public CardResponse create(@RequestBody @Valid CardCreateRequest request) {
         Card card = new Card();
@@ -41,6 +45,7 @@ public class CardController {
         return CardResponse.from(cardService.create(card));
     }
 
+    @Operation(summary = "List cards", description = "Administrators see every card, other users only their own. Supports paging and filtering by status and last four digits.")
     @GetMapping
     public List<CardResponse> list(
             @RequestParam(required = false) @Min(0) Integer page,
@@ -56,11 +61,13 @@ public class CardController {
                 .toList();
     }
 
+    @Operation(summary = "Get one card", description = "Allowed for the card holder and for administrators.")
     @GetMapping("/{id}")
     public CardResponse getById(@PathVariable String id, Authentication authentication) {
         return CardResponse.from(cardService.getById(id, authentication));
     }
 
+    @Operation(summary = "Update a card", description = "Administrators only. Status is not client-controlled and changes only through the status endpoints.")
     @PutMapping("/{id}")
     public CardResponse update(
             @PathVariable String id,
@@ -74,11 +81,13 @@ public class CardController {
         return CardResponse.from(cardService.update(id, updated, authentication));
     }
 
+    @Operation(summary = "Delete a card", description = "Administrators only.")
     @DeleteMapping("/{id}")
     public void delete(@PathVariable String id) {
         cardService.delete(id);
     }
 
+    @Operation(summary = "Transfer between own cards", description = "Both cards must belong to the caller and be active. Amounts allow at most two decimals.")
     @PostMapping("/transfer")
     public void transfer(
             @RequestBody @Valid TransferRequest request,
@@ -91,21 +100,25 @@ public class CardController {
         );
     }
 
+    @Operation(summary = "Block a card", description = "Administrators only.")
     @PatchMapping("/{id}/block")
     public CardResponse block(@PathVariable String id, Authentication authentication) {
         return CardResponse.from(cardService.block(id, authentication));
     }
 
+    @Operation(summary = "Activate a card", description = "Administrators only. Expired cards cannot be activated.")
     @PatchMapping("/{id}/activate")
     public CardResponse activate(@PathVariable String id, Authentication authentication) {
         return CardResponse.from(cardService.activate(id, authentication));
     }
 
+    @Operation(summary = "Request a block", description = "Card holder asks an administrator to block the card.")
     @PatchMapping("/{id}/block-request")
     public CardResponse requestBlock(@PathVariable String id, Authentication authentication) {
         return CardResponse.from(cardService.requestBlock(id, authentication));
     }
 
+    @Operation(summary = "Request an unblock", description = "Card holder asks an administrator to unblock the card.")
     @PatchMapping("/{id}/unblock-request")
     public CardResponse requestUnblock(@PathVariable String id, Authentication authentication) {
         return CardResponse.from(cardService.requestUnblock(id, authentication));
