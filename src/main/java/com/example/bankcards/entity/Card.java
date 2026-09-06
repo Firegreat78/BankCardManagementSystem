@@ -22,6 +22,9 @@ public class Card {
     @Id
     private String id;
 
+    @Version
+    private Long version;
+
     @NotBlank
     @Pattern(
             regexp = "^[0-9]{16}$",

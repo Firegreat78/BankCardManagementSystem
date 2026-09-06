@@ -2,12 +2,15 @@ package com.example.bankcards.repository;
 
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
 
 public interface CardJpaRepository extends JpaRepository<Card, String> {
 
@@ -15,6 +18,14 @@ public interface CardJpaRepository extends JpaRepository<Card, String> {
 
     boolean existsByNumberHashAndIdNot(String numberHash, String id);
 
+    /**
+     * Row-level write lock, used by transfers so that a concurrent transfer on
+     * the same card cannot read a balance that another transaction is about to
+     * change. Callers must lock cards in a consistent order to avoid deadlock.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM Card c WHERE c.id = :id")
+    Optional<Card> findByIdForUpdate(@Param("id") String id);
 
     /**
      * Single entry point for listing cards: every filter is optional, and a

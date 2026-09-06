@@ -26,6 +26,8 @@ public class CardService {
 
     private static final Logger log = LoggerFactory.getLogger(CardService.class);
 
+    /** Matches the NUMERIC(38,2) balance column: finer amounts would be rounded on write. */
+    private static final int BALANCE_SCALE = 2;
 
     private final CardJpaRepository cardJpaRepository;
     private final UserJpaRepository userJpaRepository;
@@ -92,6 +94,30 @@ public class CardService {
 
     private static String lastFourDigits(String number) {
         return number.substring(number.length() - 4);
+    }
+
+    /**
+     * Takes the write locks for a transfer. Ordering by id gives every
+     * transaction the same acquisition order, which is what prevents two
+     * opposite-direction transfers from deadlocking.
+     */
+    private void lockCards(String fromId, String toId) {
+        if (fromId.equals(toId)) {
+            lockCard(fromId);
+            return;
+        }
+        String first = fromId.compareTo(toId) < 0 ? fromId : toId;
+        String second = first.equals(fromId) ? toId : fromId;
+        lockCard(first);
+        lockCard(second);
+    }
+
+    private void lockCard(String id) {
+        cardJpaRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Card not found"
+                ));
     }
 
     private String resolveUserId(Authentication authentication) {
@@ -198,6 +224,24 @@ public class CardService {
                     "Amount must be positive"
             );
         }
+
+        if (amount.scale() > BALANCE_SCALE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Amount cannot have more than " + BALANCE_SCALE + " decimal places"
+            );
+        }
+
+        if (fromId.equals(toId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot transfer to the same card"
+            );
+        }
+
+        // Both rows are locked before any balance is read, in a fixed order so
+        // that two transfers touching the same pair cannot deadlock each other.
+        lockCards(fromId, toId);
 
         Card from = getById(fromId);
         Card to = getById(toId);

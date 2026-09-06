@@ -205,12 +205,15 @@ public class Utility {
             String token,
             String fromCardId,
             String toCardId,
-            BigDecimal balance) throws Exception {
+            BigDecimal amount) throws Exception {
         return mockMvc.perform(post("/cards/transfer")
-                .param("fromId", fromCardId)
-                .param("toId", toCardId)
-                .param("amount", balance.toString())
-                .header("Authorization", "Bearer " + token));
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "fromId", fromCardId,
+                        "toId", toCardId,
+                        "amount", amount
+                ))));
     }
 
     public ResultActions requestCardBlockAction(MockMvc mockMvc, String userToken, String cardId) throws Exception {

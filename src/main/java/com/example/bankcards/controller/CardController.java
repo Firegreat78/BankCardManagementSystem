@@ -3,6 +3,7 @@ package com.example.bankcards.controller;
 import com.example.bankcards.dto.CardCreateRequest;
 import com.example.bankcards.dto.CardResponse;
 import com.example.bankcards.dto.CardUpdateRequest;
+import com.example.bankcards.dto.TransferRequest;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.service.CardService;
@@ -80,11 +81,14 @@ public class CardController {
 
     @PostMapping("/transfer")
     public void transfer(
-            @RequestParam String fromId,
-            @RequestParam String toId,
-            @RequestParam BigDecimal amount,
+            @RequestBody @Valid TransferRequest request,
             Authentication authentication) {
-        cardService.transfer(fromId, toId, amount, authentication);
+        cardService.transfer(
+                request.getFromId(),
+                request.getToId(),
+                request.getAmount(),
+                authentication
+        );
     }
 
     @PatchMapping("/{id}/block")

@@ -317,6 +317,24 @@ class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void transfer_amountWithSubCentPrecision_shouldBeRejectedAndLeaveBalancesUntouched() throws Exception {
+        String fromId = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+        String toId = utility.createCard(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO);
+
+        // Balances are NUMERIC(38,2): 0.005 would round on write, so the sender
+        // could keep 10.00 while the receiver gains 0.01 — money out of nothing.
+        utility.createTransferAction(mockMvc, userToken1, fromId, toId, new BigDecimal("0.005"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.amount")
+                        .value("Amount cannot have more than 2 decimal places"));
+
+        utility.getCardAction(mockMvc, userToken1, fromId)
+                .andExpect(jsonPath("$.balance").value(10.00));
+        utility.getCardAction(mockMvc, userToken1, toId)
+                .andExpect(jsonPath("$.balance").value(0));
+    }
+
+    @Test
     void searchOwnCardsByLast4_shouldNotReturnOtherUsersCards() throws Exception {
         utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
         utility.createCard(mockMvc, adminToken, 2, userId2, BigDecimal.TEN);
@@ -341,6 +359,15 @@ class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
 
         utility.requestCardUnblockAction(mockMvc, userToken1, id)
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void transferToSameCard_shouldReturn400() throws Exception {
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+
+        utility.createTransferAction(mockMvc, userToken1, id, id, BigDecimal.ONE)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Cannot transfer to the same card"));
     }
 
     @Test
