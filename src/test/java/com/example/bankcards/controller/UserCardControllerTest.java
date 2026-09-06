@@ -371,6 +371,15 @@ class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void createCard_withUnknownHolder_shouldReturn400() throws Exception {
+        // holder_id is a foreign key in PostgreSQL; without this check the
+        // unknown holder would only fail in production, not on H2.
+        utility.createCardAction(mockMvc, adminToken, 9, "no-such-user", BigDecimal.TEN)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Card holder does not exist"));
+    }
+
+    @Test
     void requestUnblockCard_withUserToken_shouldReturn200() throws Exception {
         String id = utility.createCard(
                 mockMvc, adminToken, 1,

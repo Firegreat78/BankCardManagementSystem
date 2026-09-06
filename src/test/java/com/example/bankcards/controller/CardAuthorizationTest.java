@@ -113,6 +113,26 @@ class CardAuthorizationTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void update_withAdminToken_shouldApplyNewExpirationDate() throws Exception {
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+        LocalDate newExpiration = LocalDate.now().plusYears(5);
+
+        mockMvc.perform(put("/cards/" + id)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "number", utility.generateCardNum(1),
+                                "holderId", userId1,
+                                "balance", BigDecimal.TEN,
+                                "expirationDate", newExpiration
+                        ))))
+                .andExpect(status().isOk());
+
+        utility.getCardAction(mockMvc, adminToken, id)
+                .andExpect(jsonPath("$.expirationDate").value(newExpiration.toString()));
+    }
+
+    @Test
     void update_withAdminToken_cannotBypassStateMachineViaStatusField() throws Exception {
         String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
 

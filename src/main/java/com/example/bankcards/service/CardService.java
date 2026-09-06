@@ -54,12 +54,29 @@ public class CardService {
             );
         }
 
+        requireExistingHolder(card.getHolderId());
+
         card.setId(UUID.randomUUID().toString());
         card.setNumberHash(numberHash);
         card.setLast4(lastFourDigits(card.getNumber()));
         cardJpaRepository.save(card);
         log.info("Card {} created for holder {}", card.getId(), card.getHolderId());
         return card;
+    }
+
+    /**
+     * card.holder_id is a foreign key to users. Without this check an unknown
+     * holder reaches the database and surfaces as a 500 instead of a 400 — and
+     * because the H2 schema used by most tests has no foreign key, that failure
+     * would only ever appear in production.
+     */
+    private void requireExistingHolder(String holderId) {
+        if (!userJpaRepository.existsById(holderId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Card holder does not exist"
+            );
+        }
     }
 
     @Transactional
@@ -197,11 +214,14 @@ public class CardService {
             }
         }
 
+        requireExistingHolder(updated.getHolderId());
+
         existing.setNumber(updated.getNumber());
         existing.setNumberHash(updatedNumberHash);
         existing.setLast4(lastFourDigits(updated.getNumber()));
         existing.setHolderId(updated.getHolderId());
         existing.setBalance(updated.getBalance());
+        existing.setExpirationDate(updated.getExpirationDate());
 
         return existing;
     }
