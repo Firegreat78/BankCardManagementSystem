@@ -45,6 +45,22 @@ public class Utility {
                 ))));
     }
 
+    public ResultActions registerUserAction(
+            MockMvc mockMvc,
+            String token,
+            String username,
+            String password,
+            String role) throws Exception {
+        return mockMvc.perform(post("/users/register")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of(
+                        "username", username,
+                        "password", password,
+                        "role", role
+                ))));
+    }
+
     public String registerUser(
             MockMvc mockMvc,
             String adminToken,

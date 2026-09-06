@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -30,6 +31,12 @@ class AuthControllerTest extends com.example.bankcards.IntegrationTest {
 
     @Autowired
     Utility utility;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     void login_validCredentials_returnsToken() throws Exception {
@@ -65,6 +72,54 @@ class AuthControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void registerUser_withAdminRole_shouldCreateAWorkingSecondAdmin() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+
+        utility.registerUserAction(mockMvc, adminToken, "second-admin", "pass", "ADMIN")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+
+        // The new admin's own token must carry ADMIN and open admin-only routes.
+        String secondAdminToken = utility.loginUser(mockMvc, "second-admin", "pass");
+        String holderId = utility.registerUser(mockMvc, secondAdminToken, "carol", "pass");
+
+        utility.createCardAction(mockMvc, secondAdminToken, 7, holderId, java.math.BigDecimal.TEN)
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void registerUser_withoutRole_shouldDefaultToUser() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+
+        utility.registerUserAction(mockMvc, adminToken, "plain", "pass")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("USER"));
+
+        String userToken = utility.loginUser(mockMvc, "plain", "pass");
+        utility.registerUserAction(mockMvc, userToken, "nope", "pass")
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void registerUser_shouldStorePasswordHashedAtRest() throws Exception {
+        String adminToken = utility.loginAdmin(mockMvc);
+        String rawPassword = "alice123";
+
+        String userId = utility.registerUser(mockMvc, adminToken, "alice", rawPassword);
+        // Raw SQL bypasses the persistence context, so push the insert to the database first.
+        entityManager.flush();
+
+        String storedPassword = jdbcTemplate.queryForObject(
+                "SELECT password FROM users WHERE id = ?",
+                String.class,
+                userId
+        );
+
+        assertThat(storedPassword).isNotEqualTo(rawPassword);
+        assertThat(storedPassword).startsWith("$2");
+    }
+
+    @Test
     void registerUser_withUserToken_isForbidden() throws Exception {
         String adminToken = utility.loginAdmin(mockMvc);
 
@@ -78,8 +133,8 @@ class AuthControllerTest extends com.example.bankcards.IntegrationTest {
     @Test
     void login_registeredUser_shouldReturn200() throws Exception {
         String adminToken = utility.loginAdmin(mockMvc);
-        String id = utility.registerUser(mockMvc, adminToken, "user", "pass");
-        utility.loginUserAction(mockMvc, "user", "pass")
+        String id = utility.registerUser(mockMvc, adminToken, "regular-user", "pass");
+        utility.loginUserAction(mockMvc, "regular-user", "pass")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString());
 

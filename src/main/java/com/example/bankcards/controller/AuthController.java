@@ -1,66 +1,37 @@
 package com.example.bankcards.controller;
 
-import com.example.bankcards.config.AdminConfig;
-import com.example.bankcards.entity.User;
-import com.example.bankcards.repository.UserJpaRepository;
-import com.example.bankcards.security.JwtUtil;
-import com.example.bankcards.entity.Role;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import com.example.bankcards.dto.LoginRequest;
+import com.example.bankcards.dto.TokenResponse;
+import com.example.bankcards.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Map;
-
-@SuppressWarnings("unused")
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication", description = "Token issuing")
 public class AuthController {
 
-    @Autowired
-    private AdminConfig adminConfig;
+    private final AuthService authService;
 
-    private final UserJpaRepository userJpaRepository;
-
-    private final JwtUtil jwtUtil;
-
-    public AuthController(
-            JwtUtil jwtUtil,
-            UserJpaRepository userJpaRepository
-    ) {
-        this.jwtUtil = jwtUtil;
-        this.userJpaRepository = userJpaRepository;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
+    @Operation(
+            summary = "Log in",
+            description = "Returns a JWT to send as 'Bearer <token>'. Paste it into Authorize to call the other endpoints."
+    )
+    @SecurityRequirements
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        String password = request.get("password");
-
-        if (adminConfig.getUsername().equals(username) &&
-                adminConfig.getPassword().equals(password)
-        ) {
-            return Map.of("token", jwtUtil.generateToken(username, Role.ADMIN));
-        }
-
-        User user = userJpaRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.UNAUTHORIZED,
-                                "Invalid credentials"
-                        )
-                );
-
-        if (user.getPassword().equals(password)) {
-            return Map.of("token", jwtUtil.generateToken(username, Role.USER));
-        }
-
-        throw new ResponseStatusException(
-                HttpStatus.UNAUTHORIZED,
-                "Invalid credentials"
+    public TokenResponse login(@RequestBody @Valid LoginRequest request) {
+        return new TokenResponse(
+                authService.login(request.getUsername(), request.getPassword())
         );
     }
 }
