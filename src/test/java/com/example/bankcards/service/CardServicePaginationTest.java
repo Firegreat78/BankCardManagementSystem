@@ -23,6 +23,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -72,40 +73,53 @@ class CardServicePaginationTest {
     @Test
     void list_withPageAndSize_forAdmin_shouldUsePaginatedRepositoryQuery() {
         Page<Card> page = new PageImpl<>(List.of(card("1")));
-        when(cardJpaRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(cardJpaRepository.search(isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
 
-        List<Card> result = cardService.list(0, 2, adminAuth());
+        List<Card> result = cardService.list(0, 2, null, null, adminAuth());
 
-        verify(cardJpaRepository).findAll(PageRequest.of(0, 2));
-        verify(cardJpaRepository, never()).findAll();
+        // Null holderId = every holder, and the page request reaches the database.
+        verify(cardJpaRepository).search(null, null, null, PageRequest.of(0, 2));
         assertThat(result).hasSize(1);
     }
 
     @Test
-    void list_withPageAndSize_forUser_shouldUsePaginatedRepositoryQuery() {
+    void list_withPageAndSize_forUser_shouldRestrictToOwnCardsInQuery() {
         User user = new User();
         user.setId("holder-1");
         user.setUsername("alice");
         when(userJpaRepository.findByUsername("alice")).thenReturn(java.util.Optional.of(user));
 
         Page<Card> page = new PageImpl<>(List.of(card("1")));
-        when(cardJpaRepository.findByHolderId(eq("holder-1"), any(Pageable.class))).thenReturn(page);
+        when(cardJpaRepository.search(eq("holder-1"), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(page);
 
-        List<Card> result = cardService.list(0, 2, userAuth("alice"));
+        List<Card> result = cardService.list(0, 2, null, null, userAuth("alice"));
 
-        verify(cardJpaRepository).findByHolderId("holder-1", PageRequest.of(0, 2));
-        verify(cardJpaRepository, never()).findByHolderId("holder-1");
+        verify(cardJpaRepository).search("holder-1", null, null, PageRequest.of(0, 2));
         assertThat(result).hasSize(1);
     }
 
     @Test
-    void list_withoutPagination_shouldFallBackToUnpagedQuery() {
-        when(cardJpaRepository.findAll()).thenReturn(List.of(card("1"), card("2")));
+    void list_withoutPagination_shouldUseUnpagedQuery() {
+        when(cardJpaRepository.search(isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(card("1"), card("2"))));
 
-        List<Card> result = cardService.list(null, null, adminAuth());
+        List<Card> result = cardService.list(null, null, null, null, adminAuth());
 
-        verify(cardJpaRepository).findAll();
-        verify(cardJpaRepository, never()).findAll(any(Pageable.class));
+        verify(cardJpaRepository).search(null, null, null, Pageable.unpaged());
         assertThat(result).hasSize(2);
+    }
+
+    @Test
+    void list_withFilters_shouldPushStatusAndLast4IntoQuery() {
+        when(cardJpaRepository.search(isNull(), eq(CardStatus.BLOCKED), eq("0001"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(card("1"))));
+
+        List<Card> result = cardService.list(0, 10, CardStatus.BLOCKED, "0001", adminAuth());
+
+        // Filtering must happen in the database, not by filtering a fetched list.
+        verify(cardJpaRepository).search(null, CardStatus.BLOCKED, "0001", PageRequest.of(0, 10));
+        assertThat(result).hasSize(1);
     }
 }

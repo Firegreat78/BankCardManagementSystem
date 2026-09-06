@@ -4,8 +4,13 @@ import com.example.bankcards.dto.CardCreateRequest;
 import com.example.bankcards.dto.CardResponse;
 import com.example.bankcards.dto.CardUpdateRequest;
 import com.example.bankcards.entity.Card;
+import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.service.CardService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -15,6 +20,7 @@ import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/cards")
+@Validated
 @SuppressWarnings("unused")
 public class CardController {
 
@@ -36,10 +42,14 @@ public class CardController {
 
     @GetMapping
     public List<CardResponse> list(
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) @Min(0) Integer page,
+            @RequestParam(required = false) @Min(1) @Max(100) Integer size,
+            @RequestParam(required = false) CardStatus status,
+            @RequestParam(required = false)
+            @Pattern(regexp = "^[0-9]{4}$", message = "last4 must be exactly 4 digits")
+            String last4,
             Authentication authentication) {
-        return cardService.list(page, size, authentication)
+        return cardService.list(page, size, status, last4, authentication)
                 .stream()
                 .map(CardResponse::from)
                 .toList();

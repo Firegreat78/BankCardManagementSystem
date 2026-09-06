@@ -5,6 +5,8 @@ import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.CardJpaRepository;
 import com.example.bankcards.security.CardNumberHasher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,9 @@ import java.util.UUID;
 
 @Service
 public class CardService {
+
+    private static final Logger log = LoggerFactory.getLogger(CardService.class);
+
 
     private final CardJpaRepository cardJpaRepository;
     private final UserJpaRepository userJpaRepository;
@@ -49,7 +54,9 @@ public class CardService {
 
         card.setId(UUID.randomUUID().toString());
         card.setNumberHash(numberHash);
+        card.setLast4(lastFourDigits(card.getNumber()));
         cardJpaRepository.save(card);
+        log.info("Card {} created for holder {}", card.getId(), card.getHolderId());
         return card;
     }
 
@@ -57,6 +64,8 @@ public class CardService {
     public List<Card> list(
             Integer page,
             Integer size,
+            CardStatus status,
+            String last4,
             Authentication authentication
     ) {
         if (page != null && size == null) {
@@ -66,22 +75,23 @@ public class CardService {
             );
         }
 
-        boolean isAdmin = isAdmin(authentication);
+        // Admins see every holder's cards; everyone else is pinned to their own.
+        String holderId = isAdmin(authentication) ? null : resolveUserId(authentication);
 
-        List<Card> cards;
-        if (size == null) {
-            cards = isAdmin
-                    ? cardJpaRepository.findAll()
-                    : cardJpaRepository.findByHolderId(resolveUserId(authentication));
-        } else {
-            Pageable pageable = PageRequest.of(page == null ? 0 : page, size);
-            cards = isAdmin
-                    ? cardJpaRepository.findAll(pageable).getContent()
-                    : cardJpaRepository.findByHolderId(resolveUserId(authentication), pageable).getContent();
-        }
+        Pageable pageable = size == null
+                ? Pageable.unpaged()
+                : PageRequest.of(page == null ? 0 : page, size);
+
+        List<Card> cards = cardJpaRepository
+                .search(holderId, status, last4, pageable)
+                .getContent();
 
         cards.forEach(this::expireIfPastDue);
         return cards;
+    }
+
+    private static String lastFourDigits(String number) {
+        return number.substring(number.length() - 4);
     }
 
     private String resolveUserId(Authentication authentication) {
@@ -163,6 +173,7 @@ public class CardService {
 
         existing.setNumber(updated.getNumber());
         existing.setNumberHash(updatedNumberHash);
+        existing.setLast4(lastFourDigits(updated.getNumber()));
         existing.setHolderId(updated.getHolderId());
         existing.setBalance(updated.getBalance());
 
@@ -224,6 +235,7 @@ public class CardService {
 
         from.setBalance(from.getBalance().subtract(amount));
         to.setBalance(to.getBalance().add(amount));
+        log.info("Transferred {} from card {} to card {}", amount, fromId, toId);
     }
 
     @Transactional
@@ -255,7 +267,9 @@ public class CardService {
                     "Cannot transition card from " + card.getStatus() + " to " + to
             );
         }
+        CardStatus previous = card.getStatus();
         card.setStatus(to);
+        log.info("Card {} status changed from {} to {}", id, previous, to);
         return card;
     }
 }

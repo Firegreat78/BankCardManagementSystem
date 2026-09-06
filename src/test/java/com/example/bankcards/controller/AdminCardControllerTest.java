@@ -134,6 +134,58 @@ class AdminCardControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void getCards_filteredByLast4_shouldReturnOnlyMatchingCard() throws Exception {
+        utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO);
+        utility.createCard(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO);
+
+        mockMvc.perform(get("/cards")
+                        .param("last4", "0002")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].number").value("**** **** **** 0002"));
+    }
+
+    @Test
+    void getCards_filteredByStatus_shouldReturnOnlyMatchingCard() throws Exception {
+        String blockedId = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.ZERO);
+        utility.createCard(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO);
+        utility.blockCardAction(mockMvc, adminToken, blockedId).andExpect(status().isOk());
+
+        mockMvc.perform(get("/cards")
+                        .param("status", "BLOCKED")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(blockedId));
+    }
+
+    @Test
+    void getCards_invalidLast4_shouldReturn400WithMessage() throws Exception {
+        mockMvc.perform(get("/cards")
+                        .param("last4", "12")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.last4").value("last4 must be exactly 4 digits"));
+    }
+
+    @Test
+    void getCards_unknownStatusValue_shouldReturn400NotServerError() throws Exception {
+        mockMvc.perform(get("/cards")
+                        .param("status", "NOT_A_STATUS")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getCards_zeroSize_shouldReturn400NotServerError() throws Exception {
+        mockMvc.perform(get("/cards")
+                        .param("size", "0")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createCard_invalidNumber_shouldReturnFieldErrorInBody() throws Exception {
         utility.createCardAction(mockMvc, adminToken, "1".repeat(15), userId1, BigDecimal.ZERO)
                 .andExpect(status().isBadRequest())

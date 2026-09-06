@@ -35,6 +35,11 @@ public class Card {
     @Column(unique = true)
     private String numberHash;
 
+    /** Searchable copy of the last four digits; see V2__add_card_last4.sql. */
+    @JsonIgnore
+    @Column(length = 4)
+    private String last4;
+
     @NotBlank
     private String holderId;
 

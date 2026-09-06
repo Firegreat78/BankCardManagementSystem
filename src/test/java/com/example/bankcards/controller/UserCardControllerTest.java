@@ -317,6 +317,25 @@ class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void searchOwnCardsByLast4_shouldNotReturnOtherUsersCards() throws Exception {
+        utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+        utility.createCard(mockMvc, adminToken, 2, userId2, BigDecimal.TEN);
+
+        // Bob owns card 0002; Alice searching for it must get nothing back.
+        mockMvc.perform(get("/cards")
+                        .param("last4", "0002")
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mockMvc.perform(get("/cards")
+                        .param("last4", "0001")
+                        .header("Authorization", "Bearer " + userToken1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
     void requestUnblockOnActiveCard_shouldReturn400() throws Exception {
         String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
 
