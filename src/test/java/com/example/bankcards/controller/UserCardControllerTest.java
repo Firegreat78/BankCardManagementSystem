@@ -312,6 +312,15 @@ class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
         String toId = utility.createCard(mockMvc, adminToken, 2, userId1, BigDecimal.ZERO);
 
         utility.createTransferAction(mockMvc, userToken1, fromId, toId, BigDecimal.TEN)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Insufficient balance"));
+    }
+
+    @Test
+    void requestUnblockOnActiveCard_shouldReturn400() throws Exception {
+        String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+
+        utility.requestCardUnblockAction(mockMvc, userToken1, id)
                 .andExpect(status().isBadRequest());
     }
 

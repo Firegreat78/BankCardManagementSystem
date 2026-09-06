@@ -134,6 +134,13 @@ class AdminCardControllerTest extends com.example.bankcards.IntegrationTest {
     }
 
     @Test
+    void createCard_invalidNumber_shouldReturnFieldErrorInBody() throws Exception {
+        utility.createCardAction(mockMvc, adminToken, "1".repeat(15), userId1, BigDecimal.ZERO)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.number").value("Card number must be exactly 16 digits"));
+    }
+
+    @Test
     void getCards_onlyPageWithoutSize_shouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/cards")
                         .param("page", "0")
