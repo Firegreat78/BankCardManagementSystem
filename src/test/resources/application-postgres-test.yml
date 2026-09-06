@@ -1,0 +1,21 @@
+# Profile for the Testcontainers-backed tests. The datasource is supplied at
+# runtime from the container; Flyway builds the schema exactly as it does in
+# production and Hibernate only validates against it, so any drift between the
+# entities and the migrations fails the build.
+spring:
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+
+jwt:
+  secret: test-only-jwt-secret-not-used-in-any-deployment-0123456789
+card:
+  encryption:
+    secret: test-only-card-encryption-secret-not-used-in-deployment
+admin:
+  username: user
+  password: pass
