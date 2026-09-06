@@ -8,11 +8,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -31,12 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 Делает переводы между своими картами
 Смотрит баланс
 * */
-@SpringBootTest
-@AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 @SuppressWarnings("unused")
-@ActiveProfiles("test")
-class UserCardControllerTest {
+class UserCardControllerTest extends com.example.bankcards.IntegrationTest {
 
     @Autowired
     private AdminConfig adminConfig;

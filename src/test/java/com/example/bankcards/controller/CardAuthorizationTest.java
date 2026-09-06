@@ -6,12 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -28,12 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * touch their own cards, admins may touch any card, and direct block/activate
  * are admin-only regardless of ownership.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
 @SuppressWarnings("unused")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
-@ActiveProfiles("test")
-class CardAuthorizationTest {
+class CardAuthorizationTest extends com.example.bankcards.IntegrationTest {
 
     @Autowired
     private Utility utility;

@@ -5,11 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -20,12 +18,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
 @SuppressWarnings("unused")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class CardSecurityTest {
+class CardSecurityTest extends com.example.bankcards.IntegrationTest {
 
     @Autowired
     Utility utility;
@@ -38,6 +32,9 @@ class CardSecurityTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private String adminToken;
     private String userId1;
@@ -84,6 +81,9 @@ class CardSecurityTest {
     void cardNumber_shouldBeEncryptedAtRest() throws Exception {
         String plainNumber = utility.generateCardNum(1);
         String id = utility.createCard(mockMvc, adminToken, 1, userId1, BigDecimal.TEN);
+
+        // Raw SQL bypasses the persistence context, so push the insert to the database first.
+        entityManager.flush();
 
         String rawColumnValue = jdbcTemplate.queryForObject(
                 "SELECT number FROM card WHERE id = ?",
