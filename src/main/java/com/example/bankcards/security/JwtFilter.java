@@ -1,16 +1,18 @@
 package com.example.bankcards.security;
 
 import com.example.bankcards.entity.Role;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -18,8 +20,13 @@ import java.util.Collections;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
+
+    private final JwtUtil jwtUtil;
+
+    public JwtFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -32,15 +39,12 @@ public class JwtFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+
         String token = authHeader.substring(7);
-        String username = jwtUtil.extractUsername(token);
-        Role role = jwtUtil.extractRole(token);
-        boolean valid = jwtUtil.validateToken(token, username, role);
-        if (!valid) {
-            chain.doFilter(request, response);
-            return;
-        }
         try {
+            String username = jwtUtil.extractUsername(token);
+            Role role = jwtUtil.extractRole(token);
+
             SecurityContextHolder.getContext().setAuthentication(
                     new UsernamePasswordAuthenticationToken(
                             username,
@@ -50,11 +54,14 @@ public class JwtFilter extends OncePerRequestFilter {
                             )
                     )
             );
-            chain.doFilter(request, response);
-            return;
-        } catch (Exception e) {
-            System.out.println("JWT error: " + e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            // Expired, malformed or wrongly signed token: leave the request
+            // unauthenticated so the entry point answers 401 instead of the
+            // exception escaping the filter chain as a 500.
+            log.debug("Rejected JWT: {}", e.getMessage());
+            SecurityContextHolder.clearContext();
         }
+
         chain.doFilter(request, response);
     }
 }
